@@ -8,7 +8,8 @@ import os
 from final import RAGChatbot  # make sure trail.py contains your updated Gemini code
 
 app = FastAPI(title="GharFix Chatbot API")
-
+# Serve frontend folder
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 # Enable CORS for your frontend
 app.add_middleware(
     CORSMiddleware,
@@ -49,3 +50,4 @@ async def health_check():
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
