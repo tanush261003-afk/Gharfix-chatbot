@@ -2,31 +2,26 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-import os
-
-# Import your RAGChatbot class that uses Gemini
-from final import RAGChatbot  # make sure trail.py contains your updated Gemini code
+from final import RAGChatbot
 
 app = FastAPI(title="GharFix Chatbot API")
-# Serve frontend folder
-app.mount("/", StaticFiles(directory="forntend", html=True), name="frontend")
-# Enable CORS for your frontend
+
+# Enable CORS for all origins (configure for production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ⚠️ For dev only. Replace with your frontend URLs in prod
+    allow_origins=["*"],  # Change to specific domains in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load Gemini API Key from environment variable
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-if not GEMINI_API_KEY:
-    raise RuntimeError("❌ GEMINI_API_KEY not set! Please export it before running.")
-
-# Initialize bot with API Key
-bot = RAGChatbot()
+# Initialize chatbot
+try:
+    bot = RAGChatbot()
+    print("✅ GharFix Chatbot initialized successfully with memory")
+except Exception as e:
+    print(f"❌ Failed to initialize chatbot: {e}")
+    bot = None
 
 class ChatRequest(BaseModel):
     message: str
@@ -38,17 +33,35 @@ class ChatResponse(BaseModel):
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
+    if not bot:
+        raise HTTPException(status_code=500, detail="Chatbot not initialized")
+    
     try:
-        response = bot.chat_with_rag(request.message)
-        return ChatResponse(response=response, conversation_id=request.conversation_id)
+        # Pass conversation_id to maintain memory
+        response = bot.chat_with_rag(request.message, request.conversation_id)
+        return ChatResponse(
+            response=response,
+            conversation_id=request.conversation_id
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "message": "GharFix API is running"}
+    return {
+        "status": "healthy", 
+        "features": ["conversation_memory", "embedded_knowledge", "gemini_api"],
+        "chatbot_ready": bot is not None
+    }
+
+@app.get("/")
+async def root():
+    return {
+        "message": "GharFix Chatbot API", 
+        "status": "online",
+        "version": "2.0",
+        "features": "Memory + Embedded Knowledge"
+    }
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
