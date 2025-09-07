@@ -83,7 +83,7 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
 
     def add_documents(self, texts):
         """Add docs using Google embeddings API"""
-        resp = genai.embed_content(model="text-embedding-004", content=texts)
+        resp = genai.embed_content(model="models/text-embedding-004", content=texts)
         embeddings = [e for e in resp['embedding']]
         self.collection.add(
             embeddings=embeddings,
@@ -103,7 +103,7 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
 
     def search_knowledge(self, query, n_results=5):
         """Retrieve relevant docs via embeddings & ChromaDB"""
-        resp = genai.embed_content(model="text-embedding-004", content=query)
+        resp = genai.embed_content(model="models/text-embedding-004", content=[query])
         qvec = resp['embedding']
         results = self.collection.query(query_embeddings=[qvec], n_results=n_results)
         return results["documents"][0] if results["documents"] else []
@@ -142,3 +142,4 @@ Answer:"""
 # Initialize and load knowledge
 bot = RAGChatbot()
 bot.add_documents([bot.knowledge_base])
+
