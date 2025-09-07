@@ -9,10 +9,10 @@ import os
 
 app = FastAPI(title="GharFix Chatbot API")
 
-# Serve frontend files at /static (CSS, JS, assets)
+# Serve static files (CSS, JS) at /static
 app.mount("/static", StaticFiles(directory="forntend"), name="static")
 
-# Enable CORS for all origins (configure properly for production)
+# Enable CORS for all origins - configure for production as needed
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
@@ -41,7 +41,6 @@ class ChatResponse(BaseModel):
 async def chat_endpoint(request: ChatRequest):
     if not bot:
         raise HTTPException(status_code=500, detail="Chatbot not initialized")
-
     try:
         response = bot.chat_with_rag(request.message, request.conversation_id)
         return ChatResponse(
