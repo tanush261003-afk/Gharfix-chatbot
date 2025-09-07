@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GharFix Assistant</title>
-    <!-- Ensure CSS path matches your deployment -->
-    <link rel="stylesheet" href="style.css" />
+    <!-- Update CSS href to /static/ style if served via static mount -->
+    <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
     <div class="container">
@@ -14,7 +14,6 @@
                 <h2>🏠 GharFix Assistant</h2>
                 <p>Your one-stop solution for home services</p>
             </header>
-
             <main 
                 class="chat-messages" 
                 id="chatMessages" 
@@ -24,8 +23,7 @@
             >
                 <!-- Chat messages will show up here -->
             </main>
-
-            <form class="chat-input-container" onsubmit="event.preventDefault(); sendButton.click();">
+            <form class="chat-input-container" autocomplete="off" aria-label="Chat input form">
                 <input
                     type="text"
                     id="messageInput"
@@ -36,7 +34,6 @@
                 />
                 <button type="submit" id="sendButton" aria-label="Send message">Send</button>
             </form>
-
             <nav class="quick-actions" aria-label="Quick message buttons">
                 <button class="quick-btn" type="button" data-msg="List all the services">Our Services</button>
                 <button class="quick-btn" type="button" data-msg="How do I book a service?">How to Book</button>
@@ -44,14 +41,18 @@
             </nav>
         </div>
     </div>
-
     <script>
         const chatMessages = document.getElementById("chatMessages");
         const messageInput = document.getElementById("messageInput");
         const sendButton = document.getElementById("sendButton");
         const quickButtons = document.querySelectorAll(".quick-btn");
+        
+        let conversationId = generateConversationId();
 
-        let conversationId = "default"; // Change to a unique id per user/session if needed
+        // Generate a simple unique conversation ID (UUID or timestamp-based can be used)
+        function generateConversationId() {
+            return 'cid-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        }
 
         // Append a new message to the chat window
         function appendMessage(sender, message) {
@@ -63,20 +64,30 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        // Clear input, focus back, and send the message
+        function processSend() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+            appendMessage("User", message);
+            messageInput.value = "";
+            messageInput.focus();
+            sendMessage(message);
+        }
+
         // Send user message to backend and display bot response
         async function sendMessage(message) {
-            if (!message.trim()) return;
-            appendMessage("User", message);
             try {
                 const response = await fetch("/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ message, conversation_id: conversationId }),
                 });
+
                 if (!response.ok) {
                     appendMessage("Bot", "Sorry, something went wrong. Please try again.");
                     return;
                 }
+
                 const data = await response.json();
                 appendMessage("Bot", data.response);
             } catch (error) {
@@ -84,26 +95,24 @@
             }
         }
 
-        // Send message on button click and clear input
-        sendButton.addEventListener("click", () => {
-            const msg = messageInput.value;
-            messageInput.value = "";
-            sendMessage(msg);
-            messageInput.focus();
+        // Event listeners for send button and enter key
+        sendButton.addEventListener("click", (e) => {
+            e.preventDefault(); // prevent form submission
+            processSend();
         });
 
-        // Enable sending message by pressing Enter key
         messageInput.addEventListener("keypress", e => {
             if (e.key === "Enter") {
                 e.preventDefault();
-                sendButton.click();
+                processSend();
             }
         });
 
-        // Quick buttons to send predefined messages
+        // Quick buttons send their respective messages
         quickButtons.forEach(button => {
             button.addEventListener("click", () => {
                 const msg = button.getAttribute("data-msg");
+                appendMessage("User", msg);
                 sendMessage(msg);
             });
         });
