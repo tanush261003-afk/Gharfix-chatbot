@@ -8,31 +8,33 @@
 </head>
 <body>
     <div class="container">
-        <div class="chatbot-container">
-            <div class="chatbot-header">
+        <div class="chatbot-container" role="region" aria-label="GharFix Chatbot">
+            <header class="chatbot-header">
                 <h2>🏠 GharFix Assistant</h2>
                 <p>Your one-stop solution for home services</p>
-            </div>
+            </header>
 
-            <div class="chat-messages" id="chatMessages">
+            <main class="chat-messages" id="chatMessages" aria-live="polite" aria-atomic="false" tabindex="0">
                 <!-- Messages will appear here -->
-            </div>
+            </main>
 
-            <div class="chat-input-container">
+            <form class="chat-input-container" onsubmit="event.preventDefault(); sendButton.click();">
                 <input
                     type="text"
                     id="messageInput"
                     placeholder="Ask about our services, pricing, booking..."
                     autocomplete="off"
+                    aria-label="Chat input"
+                    required
                 />
-                <button id="sendButton">Send</button>
-            </div>
+                <button type="submit" id="sendButton" aria-label="Send message">Send</button>
+            </form>
 
-            <div class="quick-actions">
-                <button class="quick-btn" data-msg="List all the services">Our Services</button>
-                <button class="quick-btn" data-msg="How do I book a service?">How to Book</button>
-                <button class="quick-btn" data-msg="What are your rates?">Pricing</button>
-            </div>
+            <nav class="quick-actions" aria-label="Quick message buttons">
+                <button class="quick-btn" type="button" data-msg="List all the services">Our Services</button>
+                <button class="quick-btn" type="button" data-msg="How do I book a service?">How to Book</button>
+                <button class="quick-btn" type="button" data-msg="What are your rates?">Pricing</button>
+            </nav>
         </div>
     </div>
 
@@ -42,30 +44,25 @@
         const sendButton = document.getElementById("sendButton");
         const quickButtons = document.querySelectorAll(".quick-btn");
 
-        let conversationId = "default";
+        let conversationId = "default"; // Can be generated uniquely per session
 
         function appendMessage(sender, message) {
             const messageElem = document.createElement("div");
             messageElem.classList.add(sender === "User" ? "msg-user" : "msg-bot");
             messageElem.textContent = message;
             chatMessages.appendChild(messageElem);
+            // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
         async function sendMessage(message) {
             if (!message.trim()) return;
             appendMessage("User", message);
-
             try {
                 const response = await fetch("/chat", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        message,
-                        conversation_id: conversationId,
-                    }),
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message, conversation_id: conversationId }),
                 });
                 if (!response.ok) {
                     appendMessage("Bot", "Sorry, something went wrong. Please try again.");
@@ -79,21 +76,23 @@
         }
 
         sendButton.addEventListener("click", () => {
-            const message = messageInput.value;
+            const msg = messageInput.value;
             messageInput.value = "";
-            sendMessage(message);
+            sendMessage(msg);
+            messageInput.focus();
         });
 
         messageInput.addEventListener("keypress", (e) => {
             if (e.key === "Enter") {
+                e.preventDefault();
                 sendButton.click();
             }
         });
 
         quickButtons.forEach(button => {
             button.addEventListener("click", () => {
-                const quickMsg = button.getAttribute("data-msg");
-                sendMessage(quickMsg);
+                const msg = button.getAttribute("data-msg");
+                sendMessage(msg);
             });
         });
     </script>
