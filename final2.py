@@ -6,7 +6,7 @@ from final import RAGChatbot
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="GharFix Chatbot API")
-app.mount("/", StaticFiles(directory="forntend", html=True), name="frontend")
+app.mount("/static", StaticFiles(directory="forntend"), name="frontend")
 # Enable CORS for all origins (configure for production)
 app.add_middleware(
     CORSMiddleware,
@@ -66,4 +66,5 @@ async def health_check():
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
