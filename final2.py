@@ -6,17 +6,20 @@ from final import RAGChatbot
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="GharFix Chatbot API")
-app.mount("/static", StaticFiles(directory="forntend"), name="frontend")
-# Enable CORS for all origins (configure for production)
+
+# Serve frontend static files at root - index.html served automatically
+app.mount("/", StaticFiles(directory="forntend", html=True), name="frontend")
+
+# Enable CORS for all origins (configure properly for production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change to specific domains in production
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize chatbot
+# Initialize chatbot instance
 try:
     bot = RAGChatbot()
     print("✅ GharFix Chatbot initialized successfully with memory")
@@ -36,35 +39,15 @@ class ChatResponse(BaseModel):
 async def chat_endpoint(request: ChatRequest):
     if not bot:
         raise HTTPException(status_code=500, detail="Chatbot not initialized")
-    
+
     try:
-        # Pass conversation_id to maintain memory
         response = bot.chat_with_rag(request.message, request.conversation_id)
         return ChatResponse(
             response=response,
-            conversation_id=request.conversation_id
+            conversation_id=request.conversation_id,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy", 
-        "features": ["conversation_memory", "embedded_knowledge", "gemini_api"],
-        "chatbot_ready": bot is not None
-    }
-
-#@app.get("/")
-#async def root():
- #   return {
-  #      "message": "GharFix Chatbot API", 
-   #     "status": "online",
-    #    "version": "2.0",
-     #   "features": "Memory + Embedded Knowledge"
-    #}
-
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
