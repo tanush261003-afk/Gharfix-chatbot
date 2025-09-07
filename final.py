@@ -82,15 +82,14 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
 """
 
     def add_documents(self, texts):
-         """Add docs using Google embeddings API"""
--        resp = genai.embedding.create(model="embed-text-2", content=texts)
-+        resp = genai.embeddings.embed(model="embed-text-2", content=texts)
-         embeddings = [e.embedding for e in resp.embeddings]
-         self.collection.add(
-             embeddings=embeddings,
-             documents=texts,
-             ids=[f"doc_{i}" for i in range(len(texts))]
-         )
+        """Add docs using Google embeddings API"""
+        resp = genai.embed_content(model="text-embedding-004", content=texts)
+        embeddings = [e for e in resp['embedding']]
+        self.collection.add(
+            embeddings=embeddings,
+            documents=texts,
+            ids=[f"doc_{i}" for i in range(len(texts))]
+        )
 
     def add_to_memory(self, cid, user, bot):
         mem = self.conversation_memory.setdefault(cid, [])
@@ -103,12 +102,11 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
         return "\n".join(f"User: {e['user']}\nAssistant: {e['bot']}" for e in mem)
 
     def search_knowledge(self, query, n_results=5):
-         """Retrieve relevant docs via embeddings & ChromaDB"""
--        resp = genai.embedding.create(model="embed-text-2", content=[query])
-+        resp = genai.embeddings.embed(model="embed-text-2", content=[query])
-         qvec = resp.embeddings[0].embedding
-         results = self.collection.query(query_embeddings=[qvec], n_results=n_results)
-         return results["documents"][0] if results["documents"] else []
+        """Retrieve relevant docs via embeddings & ChromaDB"""
+        resp = genai.embed_content(model="text-embedding-004", content=query)
+        qvec = resp['embedding']
+        results = self.collection.query(query_embeddings=[qvec], n_results=n_results)
+        return results["documents"][0] if results["documents"] else []
 
     def chat_with_rag(self, question, cid="default"):
         history = self.get_conversation_context(cid)
@@ -144,4 +142,3 @@ Answer:"""
 # Initialize and load knowledge
 bot = RAGChatbot()
 bot.add_documents([bot.knowledge_base])
-
