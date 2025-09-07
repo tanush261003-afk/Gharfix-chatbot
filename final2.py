@@ -8,7 +8,8 @@ from fastapi.staticfiles import StaticFiles
 app = FastAPI(title="GharFix Chatbot API")
 
 # Serve frontend static files at root - index.html served automatically
-app.mount("/", StaticFiles(directory="forntend", html=True), name="frontend")
+app.mount("/static", StaticFiles(directory="forntend"), name="static")
+
 
 # Enable CORS for all origins (configure properly for production)
 app.add_middleware(
@@ -51,3 +52,4 @@ async def chat_endpoint(request: ChatRequest):
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
