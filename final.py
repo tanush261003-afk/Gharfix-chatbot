@@ -27,8 +27,9 @@ class RAGChatbot:
         self.knowledge_base = """<YOUR KNOWLEDGE BASE TEXT>"""
 
     def add_documents(self, texts):
-        # Use Google embeddings instead of sentence-transformers
-        resp = genai.embeddings.create(model="embed-text-2", content=texts)
+        """Add docs using Google embeddings API"""
+-        resp = genai.embeddings.create(model="embed-text-2", content=texts)
++        resp = genai.embedding.create(model="embed-text-2", content=texts)
         embeddings = [e.embedding for e in resp.embeddings]
         self.collection.add(
             embeddings=embeddings,
@@ -47,7 +48,9 @@ class RAGChatbot:
         return "\n".join(f"User: {e['user']}\nAssistant: {e['bot']}" for e in mem)
 
     def search_knowledge(self, query, n_results=5):
-        resp = genai.embeddings.create(model="embed-text-2", content=[query])
+        """Retrieve relevant docs via embeddings & ChromaDB"""
+-        resp = genai.embeddings.create(model="embed-text-2", content=[query])
++        resp = genai.embedding.create(model="embed-text-2", content=[query])
         qvec = resp.embeddings[0].embedding
         results = self.collection.query(query_embeddings=[qvec], n_results=n_results)
         return results["documents"][0] if results["documents"] else []
@@ -86,3 +89,4 @@ Answer:"""
 # Initialize and load
 bot = RAGChatbot()
 bot.add_documents([bot.knowledge_base])
+
