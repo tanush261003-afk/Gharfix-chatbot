@@ -3,9 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 from final import RAGChatbot
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="GharFix Chatbot API")
-
+app.mount("/", StaticFiles(directory="forntend", html=True), name="frontend")
 # Enable CORS for all origins (configure for production)
 app.add_middleware(
     CORSMiddleware,
@@ -54,14 +55,15 @@ async def health_check():
         "chatbot_ready": bot is not None
     }
 
-@app.get("/")
-async def root():
-    return {
-        "message": "GharFix Chatbot API", 
-        "status": "online",
-        "version": "2.0",
-        "features": "Memory + Embedded Knowledge"
-    }
+#@app.get("/")
+#async def root():
+ #   return {
+  #      "message": "GharFix Chatbot API", 
+   #     "status": "online",
+    #    "version": "2.0",
+     #   "features": "Memory + Embedded Knowledge"
+    #}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
