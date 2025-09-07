@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GharFix Assistant</title>
-    <!-- Update CSS href to /static/ style if served via static mount -->
     <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
@@ -14,15 +13,11 @@
                 <h2>🏠 GharFix Assistant</h2>
                 <p>Your one-stop solution for home services</p>
             </header>
-            <main 
-                class="chat-messages" 
-                id="chatMessages" 
-                aria-live="polite" 
-                aria-atomic="false" 
-                tabindex="0"
-            >
+            
+            <main class="chat-messages" id="chatMessages" aria-live="polite" aria-atomic="false" tabindex="0">
                 <!-- Chat messages will show up here -->
             </main>
+            
             <form class="chat-input-container" autocomplete="off" aria-label="Chat input form">
                 <input
                     type="text"
@@ -34,6 +29,7 @@
                 />
                 <button type="submit" id="sendButton" aria-label="Send message">Send</button>
             </form>
+            
             <nav class="quick-actions" aria-label="Quick message buttons">
                 <button class="quick-btn" type="button" data-msg="List all the services">Our Services</button>
                 <button class="quick-btn" type="button" data-msg="How do I book a service?">How to Book</button>
@@ -41,81 +37,7 @@
             </nav>
         </div>
     </div>
-    <script>
-        const chatMessages = document.getElementById("chatMessages");
-        const messageInput = document.getElementById("messageInput");
-        const sendButton = document.getElementById("sendButton");
-        const quickButtons = document.querySelectorAll(".quick-btn");
-        
-        let conversationId = generateConversationId();
-
-        // Generate a simple unique conversation ID (UUID or timestamp-based can be used)
-        function generateConversationId() {
-            return 'cid-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-        }
-
-        // Append a new message to the chat window
-        function appendMessage(sender, message) {
-            const messageElem = document.createElement("div");
-            messageElem.classList.add(sender === "User" ? "msg-user" : "msg-bot");
-            messageElem.textContent = message;
-            chatMessages.appendChild(messageElem);
-            // Auto-scroll to the latest message
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Clear input, focus back, and send the message
-        function processSend() {
-            const message = messageInput.value.trim();
-            if (!message) return;
-            appendMessage("User", message);
-            messageInput.value = "";
-            messageInput.focus();
-            sendMessage(message);
-        }
-
-        // Send user message to backend and display bot response
-        async function sendMessage(message) {
-            try {
-                const response = await fetch("/chat", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message, conversation_id: conversationId }),
-                });
-
-                if (!response.ok) {
-                    appendMessage("Bot", "Sorry, something went wrong. Please try again.");
-                    return;
-                }
-
-                const data = await response.json();
-                appendMessage("Bot", data.response);
-            } catch (error) {
-                appendMessage("Bot", "Sorry, network error. Please check your connection.");
-            }
-        }
-
-        // Event listeners for send button and enter key
-        sendButton.addEventListener("click", (e) => {
-            e.preventDefault(); // prevent form submission
-            processSend();
-        });
-
-        messageInput.addEventListener("keypress", e => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                processSend();
-            }
-        });
-
-        // Quick buttons send their respective messages
-        quickButtons.forEach(button => {
-            button.addEventListener("click", () => {
-                const msg = button.getAttribute("data-msg");
-                appendMessage("User", msg);
-                sendMessage(msg);
-            });
-        });
-    </script>
+    
+    <script src="/static/front.js"></script>
 </body>
 </html>
