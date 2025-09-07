@@ -1,6 +1,6 @@
 class GharFixChatbot {
     constructor() {
-        this.apiUrl = 'http://localhost:8000/chat'; // Change when you deploy
+        this.apiUrl = '/chat'; // Use relative URL for deployed version
         this.conversationId = 'conv_' + Date.now();
         this.isTyping = false;
         
@@ -17,7 +17,11 @@ class GharFixChatbot {
     }
     
     bindEvents() {
-        this.sendButton.addEventListener('click', () => this.sendMessage());
+        this.sendButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.sendMessage();
+        });
+        
         this.messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -109,11 +113,7 @@ class GharFixChatbot {
             console.error('Chat error:', error);
             typingIndicator.remove();
             
-            let errorMessage = 'Sorry, I\'m having trouble connecting. Please check:\n\n';
-            errorMessage += '• Is the chatbot API running?\n';
-            errorMessage += '• Is your internet connection stable?\n\n';
-            errorMessage += 'Try refreshing the page or contact support.';
-            
+            let errorMessage = 'Sorry, I\'m having trouble connecting. Please try refreshing the page or contact support at +91 75068 55407.';
             this.addMessage(errorMessage, 'bot');
         } finally {
             this.isTyping = false;
