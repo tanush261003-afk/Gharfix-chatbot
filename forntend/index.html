@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GharFix Assistant</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
     <div class="container">
@@ -44,14 +44,13 @@
         const sendButton = document.getElementById("sendButton");
         const quickButtons = document.querySelectorAll(".quick-btn");
 
-        let conversationId = "default"; // Can be generated uniquely per session
+        let conversationId = "default"; // Update to unique per user/session if needed
 
         function appendMessage(sender, message) {
             const messageElem = document.createElement("div");
             messageElem.classList.add(sender === "User" ? "msg-user" : "msg-bot");
             messageElem.textContent = message;
             chatMessages.appendChild(messageElem);
-            // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
@@ -82,7 +81,7 @@
             messageInput.focus();
         });
 
-        messageInput.addEventListener("keypress", (e) => {
+        messageInput.addEventListener("keypress", e => {
             if (e.key === "Enter") {
                 e.preventDefault();
                 sendButton.click();
