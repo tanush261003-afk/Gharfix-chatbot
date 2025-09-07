@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GharFix Assistant</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
     <div class="container">
@@ -13,30 +13,89 @@
                 <h2>🏠 GharFix Assistant</h2>
                 <p>Your one-stop solution for home services</p>
             </div>
-            
+
             <div class="chat-messages" id="chatMessages">
                 <!-- Messages will appear here -->
             </div>
-            
+
             <div class="chat-input-container">
-                <input 
-                    type="text" 
-                    id="messageInput" 
-                    placeholder="Ask about our services, pricing, booking..." 
-                    
-                >
+                <input
+                    type="text"
+                    id="messageInput"
+                    placeholder="Ask about our services, pricing, booking..."
+                    autocomplete="off"
+                />
                 <button id="sendButton">Send</button>
             </div>
-            
+
             <div class="quick-actions">
                 <button class="quick-btn" data-msg="List all the services">Our Services</button>
                 <button class="quick-btn" data-msg="How do I book a service?">How to Book</button>
                 <button class="quick-btn" data-msg="What are your rates?">Pricing</button>
-                
             </div>
         </div>
     </div>
-    
-    <script src="front.js"></script>
+
+    <script>
+        const chatMessages = document.getElementById("chatMessages");
+        const messageInput = document.getElementById("messageInput");
+        const sendButton = document.getElementById("sendButton");
+        const quickButtons = document.querySelectorAll(".quick-btn");
+
+        let conversationId = "default";
+
+        function appendMessage(sender, message) {
+            const messageElem = document.createElement("div");
+            messageElem.classList.add(sender === "User" ? "msg-user" : "msg-bot");
+            messageElem.textContent = message;
+            chatMessages.appendChild(messageElem);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendMessage(message) {
+            if (!message.trim()) return;
+            appendMessage("User", message);
+
+            try {
+                const response = await fetch("/chat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        message,
+                        conversation_id: conversationId,
+                    }),
+                });
+                if (!response.ok) {
+                    appendMessage("Bot", "Sorry, something went wrong. Please try again.");
+                    return;
+                }
+                const data = await response.json();
+                appendMessage("Bot", data.response);
+            } catch (error) {
+                appendMessage("Bot", "Sorry, network error. Please check your connection.");
+            }
+        }
+
+        sendButton.addEventListener("click", () => {
+            const message = messageInput.value;
+            messageInput.value = "";
+            sendMessage(message);
+        });
+
+        messageInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                sendButton.click();
+            }
+        });
+
+        quickButtons.forEach(button => {
+            button.addEventListener("click", () => {
+                const quickMsg = button.getAttribute("data-msg");
+                sendMessage(quickMsg);
+            });
+        });
+    </script>
 </body>
 </html>
