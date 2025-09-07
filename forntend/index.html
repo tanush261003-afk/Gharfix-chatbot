@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GharFix Assistant</title>
+    <!-- Ensure CSS path matches your deployment -->
     <link rel="stylesheet" href="style.css" />
-
 </head>
 <body>
     <div class="container">
@@ -15,8 +15,14 @@
                 <p>Your one-stop solution for home services</p>
             </header>
 
-            <main class="chat-messages" id="chatMessages" aria-live="polite" aria-atomic="false" tabindex="0">
-                <!-- Messages will appear here -->
+            <main 
+                class="chat-messages" 
+                id="chatMessages" 
+                aria-live="polite" 
+                aria-atomic="false" 
+                tabindex="0"
+            >
+                <!-- Chat messages will show up here -->
             </main>
 
             <form class="chat-input-container" onsubmit="event.preventDefault(); sendButton.click();">
@@ -45,16 +51,19 @@
         const sendButton = document.getElementById("sendButton");
         const quickButtons = document.querySelectorAll(".quick-btn");
 
-        let conversationId = "default"; // Update to unique per user/session if needed
+        let conversationId = "default"; // Change to a unique id per user/session if needed
 
+        // Append a new message to the chat window
         function appendMessage(sender, message) {
             const messageElem = document.createElement("div");
             messageElem.classList.add(sender === "User" ? "msg-user" : "msg-bot");
             messageElem.textContent = message;
             chatMessages.appendChild(messageElem);
+            // Auto-scroll to the latest message
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        // Send user message to backend and display bot response
         async function sendMessage(message) {
             if (!message.trim()) return;
             appendMessage("User", message);
@@ -75,6 +84,7 @@
             }
         }
 
+        // Send message on button click and clear input
         sendButton.addEventListener("click", () => {
             const msg = messageInput.value;
             messageInput.value = "";
@@ -82,6 +92,7 @@
             messageInput.focus();
         });
 
+        // Enable sending message by pressing Enter key
         messageInput.addEventListener("keypress", e => {
             if (e.key === "Enter") {
                 e.preventDefault();
@@ -89,6 +100,7 @@
             }
         });
 
+        // Quick buttons to send predefined messages
         quickButtons.forEach(button => {
             button.addEventListener("click", () => {
                 const msg = button.getAttribute("data-msg");
@@ -98,4 +110,3 @@
     </script>
 </body>
 </html>
-
