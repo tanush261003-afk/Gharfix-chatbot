@@ -1,15 +1,16 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import uvicorn
 from final import RAGChatbot
-from fastapi.staticfiles import StaticFiles
+import os
 
 app = FastAPI(title="GharFix Chatbot API")
 
-# Serve frontend static files at root - index.html served automatically
+# Serve frontend files at /static (CSS, JS, assets)
 app.mount("/static", StaticFiles(directory="forntend"), name="static")
-
 
 # Enable CORS for all origins (configure properly for production)
 app.add_middleware(
@@ -50,6 +51,13 @@ async def chat_endpoint(request: ChatRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 
+@app.get("/")
+async def root():
+    index_path = os.path.join("forntend", "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    else:
+        return {"detail": "Frontend index.html not found"}
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
