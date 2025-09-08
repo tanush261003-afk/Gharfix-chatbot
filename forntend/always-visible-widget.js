@@ -38,6 +38,7 @@ What service do you need today?`,
     }
     return id;
   }
+
   function createEl(tag,attrs={},kids=[]){
     const e=document.createElement(tag);
     Object.entries(attrs).forEach(([k,v])=>{
@@ -55,14 +56,17 @@ What service do you need today?`,
   function buildWidget(){
     // Minimize button
     const minBtn=createEl('button',{id:'gfc-minimize',type:'button',title:'Minimize chat'},['−']);
+    
     // Header
     const hdr=createEl('div',{id:'gfc-header'},[
       createEl('h3',{},[CONFIG.TITLE]),
       createEl('p',{},[CONFIG.SUBTITLE]),
       minBtn
     ]);
+    
     // Messages
     const msgs=createEl('div',{id:'gfc-messages'});
+    
     // Quick actions
     const qa=createEl('div',{className:'gfc-quick-actions'});
     CONFIG.QUICK_ACTIONS.forEach(a=>{
@@ -70,13 +74,15 @@ What service do you need today?`,
       b.onclick=()=>handleQuick(a);
       qa.appendChild(b);
     });
+    
     // Input
     const inp=createEl('input',{id:'gfc-input',type:'text',placeholder:'Type your message...',autocomplete:'off'});
     const send=createEl('button',{id:'gfc-send',type:'submit'},['Send']);
     const bar=createEl('form',{id:'gfc-inputbar',autocomplete:'off'},[inp,send]);
+    
     // Container
     const w= createEl('div',{id:'gfc-always-chat',className:isMinimized?'minimized':''},[hdr,msgs,qa,bar]);
-    return {widget:w,header:hdr,messages:msgs,input:inp,sendBtn:send,minBtn: minBtn,bar:bar};
+    return {widget:w,header:hdr,messages:msgs,input:inp,sendBtn:send,minBtn: minBtn,bar:bar,quickActions:qa};
   }
 
   // Message utils
@@ -87,21 +93,28 @@ What service do you need today?`,
     elements.messages.appendChild(m);
     elements.messages.scrollTop=elements.messages.scrollHeight;
   }
+
   function showTyping(){
     const dots=[createEl('span',{className:'dot'}),createEl('span',{className:'dot'}),createEl('span',{className:'dot'})];
     const t=createEl('div',{className:'gfc-typing'},['Assistant is typing',...dots]);
     const b=createEl('div',{className:'gfc-bubble'},[t]);
     const m=createEl('div',{className:'gfc-msg gfc-bot',id:'gfc-typing'},[b]);
-    elements.messages.appendChild(m); elements.messages.scrollTop=elements.messages.scrollHeight;
+    elements.messages.appendChild(m); 
+    elements.messages.scrollTop=elements.messages.scrollHeight;
   }
+
   function hideTyping(){
-    const e=document.getElementById('gfc-typing'); if(e) e.remove();
+    const e=document.getElementById('gfc-typing'); 
+    if(e) e.remove();
   }
 
   // Send to API
   async function sendMessage(text){
     if(isTyping) return;
-    isTyping=true; elements.sendBtn.disabled=true; showTyping();
+    isTyping=true; 
+    elements.sendBtn.disabled=true; 
+    showTyping();
+    
     try{
       const res=await fetch(CONFIG.API_BASE+CONFIG.API_ENDPOINT,{
         method:'POST',
@@ -117,7 +130,8 @@ What service do you need today?`,
       console.error(e);
       addMessage("Error connecting. Please try later.",'bot');
     }finally{
-      isTyping=false; elements.sendBtn.disabled=false;
+      isTyping=false; 
+      elements.sendBtn.disabled=false;
     }
   }
 
@@ -127,31 +141,76 @@ What service do you need today?`,
     localStorage.setItem(CONFIG.MINIMIZED_KEY,isMinimized);
     elements.widget.classList.toggle('minimized',isMinimized);
     elements.minBtn.textContent=isMinimized?'+':'−';
-    if(!isMinimized) elements.input.focus();
+    if(!isMinimized) {
+      elements.input.focus();
+    }
   }
+
+  // Handle clicking on minimized widget to expand
+  function handleWidgetClick(){
+    if(isMinimized) {
+      handleMin(); // Expand the widget
+    }
+  }
+
   function handleQuick(a){
     if(isMinimized) handleMin();
-    addMessage(a,'user'); sendMessage(a);
+    setTimeout(() => {
+      addMessage(a,'user'); 
+      sendMessage(a);
+    }, isMinimized ? 300 : 0);
   }
+
   function handleSubmit(e){
     e.preventDefault();
-    if(isMinimized){handleMin(); return;}
-    const v=elements.input.value.trim(); if(!v) return;
-    addMessage(v,'user'); elements.input.value=''; sendMessage(v);
+    if(isMinimized){
+      handleMin(); 
+      return;
+    }
+    const v=elements.input.value.trim(); 
+    if(!v) return;
+    addMessage(v,'user'); 
+    elements.input.value=''; 
+    sendMessage(v);
   }
 
   // Init
   function init(){
     elements=buildWidget();
     document.body.appendChild(elements.widget);
+    
+    // Event listeners
     elements.minBtn.addEventListener('click',handleMin);
     elements.bar.addEventListener('submit',handleSubmit);
+    
+    // Add click listener to the entire widget for when it's minimized
+    elements.widget.addEventListener('click', handleWidgetClick);
+    
+    // Show welcome message if not minimized
     if(!isMinimized){
       setTimeout(()=>{addMessage(CONFIG.WELCOME_MESSAGE,'bot');},500);
     }
+    
+    // Set correct minimize button text
     elements.minBtn.textContent=isMinimized?'+':'−';
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
-  else init();
+
+  // Initialize when DOM is ready
+  if(document.readyState==='loading') {
+    document.addEventListener('DOMContentLoaded',init);
+  } else {
+    init();
+  }
+
+  // Expose API for external control
+  window.GharFixAlwaysWidget = {
+    expand: () => {
+      if (isMinimized) handleMin();
+    },
+    minimize: () => {
+      if (!isMinimized) handleMin();
+    },
+    toggle: handleMin
+  };
 
 })();
