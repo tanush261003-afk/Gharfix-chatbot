@@ -6,10 +6,10 @@
   --gfc-text: #1f2937;
   --gfc-shadow: 0 10px 30px rgba(0,0,0,0.15);
   --gfc-border: #e5e7eb;
-  --gfc-minimize-bg: #4CAF50; /* Green color that matches the website */
+  --gfc-minimize-bg: #4CAF50;
 }
 
-/* Always visible chat container */
+/* Container */
 #gfc-always-chat {
   position: fixed;
   right: 20px;
@@ -22,7 +22,6 @@
   box-shadow: var(--gfc-shadow);
   border: 1px solid var(--gfc-border);
   z-index: 999999;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -37,7 +36,7 @@
   width: 24px;
   height: 24px;
   border: none;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255,255,255,0.2);
   color: #fff;
   border-radius: 50%;
   cursor: pointer;
@@ -47,44 +46,34 @@
   justify-content: center;
   transition: background 0.2s;
 }
-
 #gfc-minimize:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255,255,255,0.3);
 }
 
-/* Minimized state - rectangular box instead of circle */
+/* Minimized state */
 #gfc-always-chat.minimized {
   width: 180px;
   height: 55px;
   border-radius: 28px;
-  cursor: pointer;
   background: var(--gfc-minimize-bg);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(76,175,80,0.4);
 }
-
-#gfc-always-chat.minimized:hover {
-  background: #45a049;
-  transform: translateY(-50%) scale(1.05);
-}
-
 #gfc-always-chat.minimized #gfc-header,
 #gfc-always-chat.minimized #gfc-messages,
-#gfc-always-chat.minimized #gfc-inputbar,
-#gfc-always-chat.minimized .gfc-quick-actions {
+#gfc-always-chat.minimized .gfc-quick-actions,
+#gfc-always-chat.minimized #gfc-inputbar {
   display: none;
 }
-
-/* Minimized text content */
 #gfc-always-chat.minimized::after {
   content: "💬 Chat with us";
+  position: absolute;
+  color: #fff;
   font-size: 16px;
   font-weight: 600;
-  color: white;
-  letter-spacing: 0.5px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 /* Header */
@@ -94,15 +83,13 @@
   padding: 16px 20px;
   position: relative;
 }
-
 #gfc-header h3 {
   margin: 0;
-  font: 700 16px/1.2 system-ui;
+  font: 700 16px system-ui, sans-serif;
 }
-
 #gfc-header p {
   margin: 4px 0 0;
-  font: 400 12px/1.2 system-ui;
+  font: 400 12px system-ui, sans-serif;
   opacity: 0.9;
 }
 
@@ -115,68 +102,78 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 0;
 }
 
-/* Welcome box */
+/* Welcome */
 .gfc-welcome {
-  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  background: linear-gradient(135deg,#f0f9ff,#e0f2fe);
   border: 1px solid #0ea5e9;
   border-radius: 12px;
   padding: 12px;
-  margin-bottom: 8px;
   text-align: center;
 }
-
 .gfc-welcome h4 {
   margin: 0 0 8px;
   color: #0369a1;
   font-size: 14px;
 }
-
 .gfc-welcome p {
   margin: 0;
   font-size: 12px;
   color: #0c4a6e;
-  line-height: 1.4;
 }
 
-/* Message bubbles */
+/* Bubbles */
 .gfc-msg {
   display: flex;
-  align-items: flex-end;
   gap: 8px;
 }
-
-.gfc-msg.gfc-user { 
-  justify-content: flex-end; 
-}
-
-.gfc-msg.gfc-bot { 
-  justify-content: flex-start; 
-}
+.gfc-msg.gfc-user { justify-content: flex-end; }
+.gfc-msg.gfc-bot  { justify-content: flex-start; }
 
 .gfc-bubble {
   max-width: 250px;
   padding: 10px 14px;
   border-radius: 16px;
-  font: 400 13px/1.4 system-ui;
+  font: 400 13px system-ui, sans-serif;
   word-wrap: break-word;
   white-space: pre-wrap;
 }
-
 .gfc-user .gfc-bubble {
   background: #1e88e5;
   color: #fff;
   border-bottom-right-radius: 4px;
 }
-
 .gfc-bot .gfc-bubble {
   background: #fff;
   color: #1f2937;
   border: 1px solid #e5e7eb;
   border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Quick actions */
+.gfc-quick-actions {
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.gfc-quick-btn {
+  padding: 6px 12px;
+  background: var(--gfc-primary);
+  color: #fff;
+  border: 1px solid var(--gfc-primary);
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.gfc-quick-btn:hover {
+  background: var(--gfc-primary-dark);
+  transform: translateY(-1px);
 }
 
 /* Input bar */
@@ -187,39 +184,31 @@
   border-top: 1px solid #e5e7eb;
   background: #fff;
 }
-
 #gfc-input {
   flex: 1;
   border: 1px solid #d1d5db;
   border-radius: 20px;
   padding: 8px 12px;
-  font: 400 13px system-ui;
+  font: 400 13px system-ui, sans-serif;
   outline: none;
   transition: border-color 0.2s;
 }
-
-#gfc-input:focus { 
-  border-color: #1e88e5; 
-}
+#gfc-input:focus { border-color: var(--gfc-primary); }
 
 #gfc-send {
   padding: 8px 16px;
   border-radius: 20px;
   border: none;
-  background: #1e88e5;
+  background: var(--gfc-primary);
   color: #fff;
   cursor: pointer;
-  font: 500 13px system-ui;
+  font: 500 13px system-ui, sans-serif;
   transition: background 0.2s;
 }
-
-#gfc-send:hover { 
-  background: #1565c0; 
-}
-
-#gfc-send:disabled { 
-  background: #9ca3af; 
-  cursor: not-allowed; 
+#gfc-send:hover { background: var(--gfc-primary-dark); }
+#gfc-send:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
 }
 
 /* Typing indicator */
@@ -230,113 +219,52 @@
   color: #6b7280;
   font-size: 12px;
 }
-
 .gfc-typing .dot {
-  width: 5px; 
-  height: 5px; 
-  border-radius: 50%; 
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
   background: #9ca3af;
   animation: gfc-typing 1.4s infinite ease-in-out;
 }
-
-.gfc-typing .dot:nth-child(2) { 
-  animation-delay: 0.2s; 
-}
-
-.gfc-typing .dot:nth-child(3) { 
-  animation-delay: 0.4s; 
-}
-
+.gfc-typing .dot:nth-child(2) { animation-delay: 0.2s; }
+.gfc-typing .dot:nth-child(3) { animation-delay: 0.4s; }
 @keyframes gfc-typing {
-  0%,80%,100% { 
-    transform: scale(0.8); 
-    opacity:0.5; 
-  }
-  40% { 
-    transform: scale(1); 
-    opacity:1; 
-  }
-}
-
-/* Quick actions */
-.gfc-quick-actions {
-  padding: 8px 12px;
-  background: #f8fafc;
-  border-top: 1px solid #e5e7eb;
-  display: flex; 
-  flex-wrap: wrap; 
-  gap: 6px;
-}
-
-.gfc-quick-btn {
-  padding: 6px 12px; 
-  background: #1e88e5; /* Always blue, not just on hover */
-  color: #fff; /* Always white text */
-  border: 1px solid #1e88e5;
-  border-radius: 16px; 
-  font-size: 11px; 
-  cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 500;
-}
-
-.gfc-quick-btn:hover {
-  background: #1565c0; 
-  border-color: #1565c0;
-  transform: translateY(-1px);
+  0%,80%,100% { transform: scale(0.8); opacity:0.5; }
+  40% { transform: scale(1); opacity:1; }
 }
 
 /* Scrollbar */
-#gfc-messages::-webkit-scrollbar { 
-  width:4px; 
+#gfc-messages::-webkit-scrollbar {
+  width: 4px;
+}
+#gfc-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+#gfc-messages::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+#gfc-messages::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
-#gfc-messages::-webkit-scrollbar-track { 
-  background:transparent; 
-}
-
-#gfc-messages::-webkit-scrollbar-thumb { 
-  background:#cbd5e1; 
-  border-radius:2px; 
-}
-
-#gfc-messages::-webkit-scrollbar-thumb:hover { 
-  background:#94a3b8; 
-}
-
-/* Responsive */
-@media(max-width:768px){
-  #gfc-always-chat { 
-    width:300px; 
-    height:400px; 
-    right:10px; 
+/* Responsive: small screens */
+@media (max-width: 480px) {
+  /* Dock to bottom-right */
+  #gfc-always-chat {
+    top: auto !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    transform: none !important;
+    width: calc(100vw - 40px);
+    max-width: 360px;
+    height: 60vh;
+    border-radius: 16px;
   }
-  
   #gfc-always-chat.minimized {
     width: 160px;
     height: 50px;
-  }
-  
-  .gfc-bubble { 
-    max-width:200px; 
-  }
-}
-
-@media(max-width:480px){
-  #gfc-always-chat {
-    width:calc(100vw - 20px); 
-    height:60vh; 
-    right:10px; 
-    left:10px;
-  }
-  
-  #gfc-always-chat.minimized {
-    width: 140px;
-    height: 45px;
-    font-size: 14px;
-  }
-  
-  .gfc-bubble { 
-    max-width:180px; 
+    bottom: 20px;
+    right: 20px;
   }
 }
