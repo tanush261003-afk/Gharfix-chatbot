@@ -19,10 +19,17 @@ app.mount("/static", StaticFiles(directory="forntend"), name="static")
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[
+        "https://gharfix.com",
+        "https://www.gharfix.com",
+        "http://gharfix.com",
+        "http://www.gharfix.com",
+        "https://gharfix-chatbot.onrender.com"
+    ],
+    allow_credentials=False,
+    allow_methods=["POST", "GET", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    max_age=3600,
 )
 
 # Initialize chatbot instance
@@ -77,3 +84,4 @@ async def root():
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
