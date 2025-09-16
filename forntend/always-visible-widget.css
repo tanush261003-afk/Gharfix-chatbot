@@ -248,23 +248,68 @@
   background: #94a3b8;
 }
 
-/* Responsive: small screens */
+/* Enhanced mobile responsiveness - fixes iOS alignment issues */
 @media (max-width: 480px) {
-  /* Dock to bottom-right */
   #gfc-always-chat {
+    position: fixed !important;
     top: auto !important;
-    bottom: 20px !important;
-    right: 20px !important;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+    right: calc(20px + env(safe-area-inset-right, 0px)) !important;
+    left: auto !important;
     transform: none !important;
     width: calc(100vw - 40px);
     max-width: 360px;
     height: 60vh;
+    max-height: calc(100vh - 120px);
     border-radius: 16px;
+    /* iOS Safari specific fixes */
+    will-change: transform;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
+  
   #gfc-always-chat.minimized {
-    width: 160px;
-    height: 50px;
-    bottom: 20px;
-    right: 20px;
+    width: 160px !important;
+    height: 50px !important;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+    right: calc(20px + env(safe-area-inset-right, 0px)) !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+  
+  /* Ensure content doesn't overflow on small screens */
+  .gfc-bubble {
+    max-width: calc(100vw - 120px) !important;
+  }
+  
+  /* Better touch targets for iOS */
+  .gfc-quick-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+  
+  #gfc-send {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* iOS-specific fixes using feature detection */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 480px) {
+    #gfc-always-chat {
+      bottom: max(20px, env(safe-area-inset-bottom)) !important;
+      right: max(20px, env(safe-area-inset-right)) !important;
+    }
+    
+    #gfc-always-chat.minimized {
+      bottom: max(20px, env(safe-area-inset-bottom)) !important;
+      right: max(20px, env(safe-area-inset-right)) !important;
+    }
   }
 }
