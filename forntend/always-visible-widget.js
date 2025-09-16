@@ -200,9 +200,12 @@ What service do you need today?`,
     elements.container.addEventListener('click', handleContainerClick);
 
     // Show welcome if expanded
-    if (!isMinimized) {
-      setTimeout(() => addMessage(CONFIG.WELCOME_MESSAGE, 'bot'), 500);
-    }
+    setTimeout(() => {
+  // Always show welcome message when widget first loads
+  if (elements.messages.children.length === 0) {
+    addMessage(CONFIG.WELCOME_MESSAGE, 'bot');
+  }
+}, 500);
     elements.minBtn.textContent = isMinimized ? '+' : '−';
     elements.minBtn.title = isMinimized ? 'Expand chat' : 'Minimize chat';
   }
