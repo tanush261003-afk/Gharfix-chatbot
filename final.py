@@ -15,6 +15,8 @@ class RAGChatbot:
                 raise ValueError("GEMINI_API_KEY not set")
             
             genai.configure(api_key=self.api_key)
+            
+            # FIX: Use correct model name
             self.model = genai.GenerativeModel("gemini-1.5-flash")
             
             # Initialize ChromaDB collection
@@ -48,7 +50,6 @@ GharFix Services Overview - Complete Details:
 17. GharMaid Services - Trained domestic help for daily chores, cooking, and cleaning.
 18. Monthly Society Maintenance - Billing, payments, and regular upkeep for housing societies.
 19. Professional Driver Services - Trained drivers for personal and business use, hourly or full-time.
-
 SERVICE COVERAGE AREAS: Mumbai, Navi Mumbai, Lucknow, Bangalore, Chennai, Delhi, Hyderabad
 AVAILABILITY: Services available 24/7
 CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
@@ -60,12 +61,31 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
         except Exception as e:
             logging.error(f"Failed to initialize RAGChatbot: {str(e)}")
             raise
-
+    
     def add_documents(self, texts):
-        """Add docs using Google embeddings API"""
+        """Add docs using Google embeddings API - FIXED"""
         try:
-            resp = genai.embed_content(model="models/text-embedding-004", content=texts)
-            embeddings = [e for e in resp['embedding']]
+            resp = genai.embed_content(
+                model="models/text-embedding-004",
+                content=texts,
+                task_type="retrieval_document"
+            )
+            
+            # FIX: Properly extract embeddings from response
+            raw_embedding = resp.get('embedding', [])
+            
+            # Handle single or multiple embeddings
+            if isinstance(raw_embedding, list):
+                # Check if it's a single embedding (list of numbers)
+                if len(raw_embedding) > 0 and isinstance(raw_embedding[0], (int, float)):
+                    embeddings = [raw_embedding]  # Wrap in list for single doc
+                else:
+                    embeddings = raw_embedding  # Already a list of embeddings
+            else:
+                raise ValueError(f"Unexpected embedding format: {type(raw_embedding)}")
+            
+            logging.info(f"Adding {len(embeddings)} embeddings to ChromaDB")
+            
             self.collection.add(
                 embeddings=embeddings,
                 documents=texts,
@@ -74,28 +94,43 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
         except Exception as e:
             logging.error(f"Error adding documents: {str(e)}")
             raise
-
+    
     def add_to_memory(self, cid, user, bot):
         mem = self.conversation_memory.setdefault(cid, [])
         mem.append({"user": user, "bot": bot})
         if len(mem) > 6:
             self.conversation_memory[cid] = mem[-6:]
-
+    
     def get_conversation_context(self, cid):
         mem = self.conversation_memory.get(cid, [])
         return "\n".join(f"User: {e['user']}\nAssistant: {e['bot']}" for e in mem)
-
+    
     def search_knowledge(self, query, n_results=5):
-        """Retrieve relevant docs via embeddings & ChromaDB"""
+        """Retrieve relevant docs via embeddings & ChromaDB - FIXED"""
         try:
-            resp = genai.embed_content(model="models/text-embedding-004", content=[query])
-            qvec = resp['embedding']
-            results = self.collection.query(query_embeddings=[qvec], n_results=n_results)
+            resp = genai.embed_content(
+                model="models/text-embedding-004",
+                content=[query],
+                task_type="retrieval_query"
+            )
+            
+            # FIX: Extract query embedding properly
+            qvec = resp.get('embedding', [])
+            
+            # Ensure it's a flat list of floats
+            if isinstance(qvec, list) and len(qvec) > 0:
+                if not isinstance(qvec[0], (int, float)):
+                    qvec = qvec[0]  # Unwrap if nested
+            
+            results = self.collection.query(
+                query_embeddings=[qvec],
+                n_results=n_results
+            )
             return results["documents"][0] if results["documents"] else []
         except Exception as e:
             logging.error(f"Error searching knowledge: {str(e)}")
             return []
-
+    
     def chat_with_rag(self, question, cid="default"):
         try:
             history = self.get_conversation_context(cid)
@@ -103,8 +138,8 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
             context = "\n".join(docs)
             
             prompt = f"""You are GharFix's official customer assistant. Answer clearly and concisely.
-You are an AI assistant who knows everything about the services . 
-provide one precaution to the user about the issue they are describing
+You are an AI assistant who knows everything about the services. 
+Provide one precaution to the user about the issue they are describing.
 
 Rules:
 - Use the information in the context below.
@@ -112,10 +147,11 @@ Rules:
 - Tone: professional, supportive, and helpful.
 - Keep answers <5 sentences unless asked for all services
 - If the user asks for ALL services → list every service in numbered format
-- If service not available → say: "I don’t think we provide that service, but please call/message at +91 75068 55407 for confirmation".
-- If the user asks something about which the data shared with you is unknow to you with reference with the data clearly mention that Gharfix
-  does give that service or operate in that city yet but would be better if you connect with +91 75068 55407
+- If service not available → say: "I don't think we provide that service, but please call/message at +91 75068 55407 for confirmation".
+- If the user asks something about which the data shared with you is unknown to you with reference with the data clearly mention that Gharfix does give that service or operate in that city yet but would be better if you connect with +91 75068 55407
+
 Provide one precaution to the user about the issue they are describing when appropriate.
+
 CONVERSATION HISTORY:
 {history}
 
@@ -131,7 +167,8 @@ Answer:"""
             resp = self.model.generate_content(
                 prompt,
                 generation_config=genai.types.GenerationConfig(
-                    temperature=0.4, max_output_tokens=500
+                    temperature=0.4,
+                    max_output_tokens=500
                 )
             )
             answer = resp.text
@@ -142,5 +179,3 @@ Answer:"""
         
         self.add_to_memory(cid, question, answer)
         return answer
-
-
