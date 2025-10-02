@@ -17,7 +17,7 @@ class RAGChatbot:
             genai.configure(api_key=self.api_key)
             
             # FIX: Use the correct model name with -latest suffix
-            self.model = genai.GenerativeModel("gemini-1.5-flash-latest")
+            self.model = genai.GenerativeModel("gemini-1.5-Pro")
             
             # Initialize ChromaDB collection
             self.client = chromadb.PersistentClient(path="./chroma_db")
@@ -171,3 +171,4 @@ Answer:"""
         
         self.add_to_memory(cid, question, answer)
         return answer
+
