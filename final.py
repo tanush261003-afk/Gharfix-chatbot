@@ -16,8 +16,8 @@ class RAGChatbot:
             
             genai.configure(api_key=self.api_key)
             
-            # FIX: Use correct model name
-            self.model = genai.GenerativeModel("gemini-1.5-flash")
+            # FIX: Use the correct model name with -latest suffix
+            self.model = genai.GenerativeModel("gemini-1.5-flash-latest")
             
             # Initialize ChromaDB collection
             self.client = chromadb.PersistentClient(path="./chroma_db")
@@ -27,7 +27,7 @@ class RAGChatbot:
                 pass
             self.collection = self.client.create_collection("gharfix_kb_1")
             
-            # Conversation memory and embedded knowledge base
+            # Conversation memory
             self.conversation_memory = {}
             self.knowledge_base = """
 GharFix Services Overview - Complete Details:
@@ -63,7 +63,7 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
             raise
     
     def add_documents(self, texts):
-        """Add docs using Google embeddings API - FIXED"""
+        """Add docs using Google embeddings API"""
         try:
             resp = genai.embed_content(
                 model="models/text-embedding-004",
@@ -71,16 +71,14 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
                 task_type="retrieval_document"
             )
             
-            # FIX: Properly extract embeddings from response
+            # Extract embeddings properly
             raw_embedding = resp.get('embedding', [])
             
-            # Handle single or multiple embeddings
             if isinstance(raw_embedding, list):
-                # Check if it's a single embedding (list of numbers)
                 if len(raw_embedding) > 0 and isinstance(raw_embedding[0], (int, float)):
-                    embeddings = [raw_embedding]  # Wrap in list for single doc
+                    embeddings = [raw_embedding]
                 else:
-                    embeddings = raw_embedding  # Already a list of embeddings
+                    embeddings = raw_embedding
             else:
                 raise ValueError(f"Unexpected embedding format: {type(raw_embedding)}")
             
@@ -106,7 +104,7 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
         return "\n".join(f"User: {e['user']}\nAssistant: {e['bot']}" for e in mem)
     
     def search_knowledge(self, query, n_results=5):
-        """Retrieve relevant docs via embeddings & ChromaDB - FIXED"""
+        """Retrieve relevant docs via embeddings & ChromaDB"""
         try:
             resp = genai.embed_content(
                 model="models/text-embedding-004",
@@ -114,13 +112,11 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
                 task_type="retrieval_query"
             )
             
-            # FIX: Extract query embedding properly
             qvec = resp.get('embedding', [])
             
-            # Ensure it's a flat list of floats
             if isinstance(qvec, list) and len(qvec) > 0:
                 if not isinstance(qvec[0], (int, float)):
-                    qvec = qvec[0]  # Unwrap if nested
+                    qvec = qvec[0]
             
             results = self.collection.query(
                 query_embeddings=[qvec],
@@ -138,8 +134,6 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
             context = "\n".join(docs)
             
             prompt = f"""You are GharFix's official customer assistant. Answer clearly and concisely.
-You are an AI assistant who knows everything about the services. 
-Provide one precaution to the user about the issue they are describing.
 
 Rules:
 - Use the information in the context below.
@@ -148,9 +142,7 @@ Rules:
 - Keep answers <5 sentences unless asked for all services
 - If the user asks for ALL services → list every service in numbered format
 - If service not available → say: "I don't think we provide that service, but please call/message at +91 75068 55407 for confirmation".
-- If the user asks something about which the data shared with you is unknown to you with reference with the data clearly mention that Gharfix does give that service or operate in that city yet but would be better if you connect with +91 75068 55407
-
-Provide one precaution to the user about the issue they are describing when appropriate.
+- Provide one precaution to the user about the issue they are describing when appropriate.
 
 CONVERSATION HISTORY:
 {history}
