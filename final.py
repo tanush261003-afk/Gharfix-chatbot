@@ -9,16 +9,21 @@ load_dotenv()
 class RAGChatbot:
     def __init__(self):
         try:
+            # Configure Gemini API
             self.api_key = os.getenv("GEMINI_API_KEY")
             if not self.api_key:
                 raise ValueError("GEMINI_API_KEY not set")
             
             genai.configure(api_key=self.api_key)
             
-            # FIX: Use lowercase "pro" with -latest suffix
-            self.model = genai.GenerativeModel("gemini-1.5-pro-latest")
+            # FIX: Use simple model name without prefix/suffix
+            # Flash is recommended for your use case (faster, cheaper)
+            self.model = genai.GenerativeModel("gemini-2.0-flash")
             
-            # Rest of your initialization code...
+            # Or if you really want Pro:
+            # self.model = genai.GenerativeModel("gemini-1.5-pro")
+            
+            # Initialize ChromaDB collection
             self.client = chromadb.PersistentClient(path="./chroma_db")
             try:
                 self.client.delete_collection("gharfix_kb_1")
@@ -26,6 +31,7 @@ class RAGChatbot:
                 pass
             self.collection = self.client.create_collection("gharfix_kb_1")
             
+            # Conversation memory
             self.conversation_memory = {}
             self.knowledge_base = """
 GharFix Services Overview - Complete Details:
@@ -53,6 +59,7 @@ AVAILABILITY: Services available 24/7
 CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
 """
             
+            # Initialize knowledge base
             self.add_documents([self.knowledge_base])
             
         except Exception as e:
@@ -168,5 +175,3 @@ Answer:"""
         
         self.add_to_memory(cid, question, answer)
         return answer
-
-
