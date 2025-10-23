@@ -3,27 +3,23 @@ from dotenv import load_dotenv
 import chromadb
 import google.generativeai as genai
 import logging
+from datetime import datetime
+import urllib.parse
+import webbrowser
 
 load_dotenv()
 
 class RAGChatbot:
     def __init__(self):
         try:
-            # Configure Gemini API
             self.api_key = os.getenv("GEMINI_API_KEY")
             if not self.api_key:
                 raise ValueError("GEMINI_API_KEY not set")
             
             genai.configure(api_key=self.api_key)
-            
-            # FIX: Use simple model name without prefix/suffix
-            # Flash is recommended for your use case (faster, cheaper)
             self.model = genai.GenerativeModel("gemini-2.0-flash")
             
-            # Or if you really want Pro:
-            # self.model = genai.GenerativeModel("gemini-1.5-pro")
-            
-            # Initialize ChromaDB collection
+            # ChromaDB setup
             self.client = chromadb.PersistentClient(path="./chroma_db")
             try:
                 self.client.delete_collection("gharfix_kb_1")
@@ -31,8 +27,13 @@ class RAGChatbot:
                 pass
             self.collection = self.client.create_collection("gharfix_kb_1")
             
-            # Conversation memory
+            # Lead collection system
             self.conversation_memory = {}
+            self.lead_collection = {}
+            
+            # GharFix WhatsApp number (update with your actual number)
+            self.whatsapp_number = "917506855407"  # Format: country code + number (no spaces)
+            
             self.knowledge_base = """
 GharFix Services Overview - Complete Details:
 1. Tailoring Services - Custom stitching, alterations, and repairs for men's, women's, and children's clothing.
@@ -59,7 +60,6 @@ AVAILABILITY: Services available 24/7
 CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
 """
             
-            # Initialize knowledge base
             self.add_documents([self.knowledge_base])
             
         except Exception as e:
@@ -75,7 +75,6 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
                 task_type="retrieval_document"
             )
             
-            # Extract embeddings properly
             raw_embedding = resp.get('embedding', [])
             
             if isinstance(raw_embedding, list):
@@ -131,8 +130,134 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
             logging.error(f"Error searching knowledge: {str(e)}")
             return []
     
+    def generate_request_id(self):
+        """Generate unique request ID"""
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        return f"CHAT-{timestamp}"
+    
+    def generate_whatsapp_link(self, lead_data):
+        """Generate WhatsApp link with pre-filled message"""
+        now = datetime.now()
+        date_str = now.strftime("%d/%m/%Y")
+        time_str = now.strftime("%I:%M %p")
+        
+        # Create formatted message
+        message = f"""🏠 NEW LEAD ALERT
+
+Request ID: {lead_data['request_id']}
+Date: {date_str}
+Time: {time_str}
+Customer: {lead_data['name']}
+Mobile: {lead_data['phone']}
+Service: {lead_data['service']}
+Location: {lead_data['location']}
+Status: Interested
+
+----------------------------------
+Automated by GharFix chatbot"""
+        
+        # URL encode the message
+        encoded_message = urllib.parse.quote(message)
+        
+        # Generate WhatsApp link
+        whatsapp_link = f"https://wa.me/{self.whatsapp_number}?text={encoded_message}"
+        
+        return whatsapp_link
+    
+    def collect_lead_info(self, question, cid):
+        """Handle step-by-step lead collection"""
+        lead = self.lead_collection.get(cid, {})
+        
+        # Initialize lead collection
+        if not lead:
+            self.lead_collection[cid] = {"step": "name", "data": {}}
+            return "Great! I'd love to help you book a service. Let me collect some details.\n\n👤 **What's your name?**"
+        
+        # Step 1: Collect Name
+        if lead["step"] == "name":
+            lead["data"]["name"] = question.strip()
+            lead["step"] = "phone"
+            self.lead_collection[cid] = lead
+            return f"Nice to meet you, {question.strip()}! 📱\n\n**What's your phone number?**"
+        
+        # Step 2: Collect Phone
+        elif lead["step"] == "phone":
+            lead["data"]["phone"] = question.strip()
+            lead["step"] = "service"
+            self.lead_collection[cid] = lead
+            return "Perfect! 🔧\n\n**Which service do you need?**\n\n(Examples: Plumbing, Cleaning, Electrical, Massage, Chef, Tailoring, etc.)"
+        
+        # Step 3: Collect Service
+        elif lead["step"] == "service":
+            lead["data"]["service"] = question.strip()
+            lead["step"] = "location"
+            self.lead_collection[cid] = lead
+            return "Excellent choice! 📍\n\n**What's your location/address?**"
+        
+        # Step 4: Collect Location
+        elif lead["step"] == "location":
+            lead["data"]["location"] = question.strip()
+            lead["data"]["request_id"] = self.generate_request_id()
+            lead["step"] = "confirm"
+            self.lead_collection[cid] = lead
+            
+            # Show summary and ask for confirmation
+            return f"""📋 **Booking Summary:**
+
+👤 **Name:** {lead['data']['name']}
+📱 **Phone:** {lead['data']['phone']}
+🔧 **Service:** {lead['data']['service']}
+📍 **Location:** {lead['data']['location']}
+📝 **Status:** Interested
+
+✅ **Is this information correct?**
+
+Type **"Yes"** to confirm and submit your request.
+Type **"No"** to start over."""
+        
+        # Step 5: Confirmation
+        elif lead["step"] == "confirm":
+            response = question.strip().lower()
+            
+            if response in ["yes", "y", "yeah", "yep", "confirm", "correct"]:
+                # Generate WhatsApp link
+                whatsapp_link = self.generate_whatsapp_link(lead["data"])
+                
+                # Store lead data (optional - for your records)
+                logging.info(f"Lead collected: {lead['data']}")
+                
+                # Clear lead collection
+                del self.lead_collection[cid]
+                
+                # Return success message with WhatsApp link
+                return f"""✅ **Booking Request Submitted Successfully!**
+
+🎉 Your request has been registered with ID: **{lead['data']['request_id']}**
+
+📲 **Click the button below to send this to our WhatsApp:**
+
+**[📱 SEND TO WHATSAPP]({whatsapp_link})**
+
+This will open WhatsApp with your booking details pre-filled. Just click send and our team will contact you within 30 minutes!
+
+Thank you for choosing GharFix! 🏠✨"""
+            
+            elif response in ["no", "n", "nope", "cancel", "restart"]:
+                # Clear lead collection and restart
+                del self.lead_collection[cid]
+                return "No problem! Let's start over. Type **'book now'** when you're ready to try again."
+            
+            else:
+                return "Please type **'Yes'** to confirm or **'No'** to cancel."
+    
     def chat_with_rag(self, question, cid="default"):
         try:
+            # Check if user wants to book a service or is in booking flow
+            booking_keywords = ["book", "booking", "book now", "schedule", "appointment", "service booking", "i want to book"]
+            
+            if any(keyword in question.lower() for keyword in booking_keywords) or cid in self.lead_collection:
+                return self.collect_lead_info(question, cid)
+            
             history = self.get_conversation_context(cid)
             docs = self.search_knowledge(question)
             context = "\n".join(docs)
@@ -146,7 +271,7 @@ Rules:
 - Keep answers <5 sentences unless asked for all services
 - If the user asks for ALL services → list every service in numbered format
 - If service not available → say: "I don't think we provide that service, but please call/message at +91 75068 55407 for confirmation".
-- Provide one precaution to the user about the issue they are describing when appropriate.
+- If the user wants to book a service, say: "I can help you book a service! Just type **'book now'** and I'll collect your details."
 
 CONVERSATION HISTORY:
 {history}
