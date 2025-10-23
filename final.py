@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import chromadb
 import google.generativeai as genai
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta  # Added timezone and timedelta
 import urllib.parse
 
 load_dotenv()
@@ -149,39 +149,43 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
         
         return False, None
     
-    def generate_request_id(self):
-        """Generate unique request ID"""
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+   def generate_request_id(self):
+        """Generate unique request ID with IST timezone"""
+        # IST is UTC+5:30
+        ist = timezone(timedelta(hours=5, minutes=30))
+        now = datetime.now(ist)
+        timestamp = now.strftime("%Y%m%d%H%M%S")
         return f"CHAT-{timestamp}"
+
     
     def send_to_whatsapp(self, lead_data):
         """Return WhatsApp link - browser will auto-open it"""
-        now = datetime.now()
+        # IST is UTC+5:30
+        ist = timezone(timedelta(hours=5, minutes=30))
+        now = datetime.now(ist)
+        
         date_str = now.strftime("%d/%m/%Y")
         time_str = now.strftime("%I:%M %p")
         
-        # Create formatted message WITHOUT emoji (WhatsApp displays better)
         message = f"""NEW LEAD ALERT
-
-Request ID: {lead_data['request_id']}
-Date: {date_str}
-Time: {time_str}
-Customer: {lead_data['name']}
-Mobile: {lead_data['phone']}
-Service: {lead_data['service']}
-Location: {lead_data['location']}
-Status: Interested
-
-----------------------------------
-Automated by GharFix chatbot"""
+    
+    Request ID: {lead_data['request_id']}
+    Date: {date_str}
+    Time: {time_str}
+    Customer: {lead_data['name']}
+    Mobile: {lead_data['phone']}
+    Service: {lead_data['service']}
+    Location: {lead_data['location']}
+    Status: Interested
+    
+    ----------------------------------
+    Automated by GharFix chatbot"""
         
-        # URL encode the message
         encoded_message = urllib.parse.quote(message)
-        
-        # Generate WhatsApp link that auto-opens
         whatsapp_link = f"https://wa.me/{self.whatsapp_number}?text={encoded_message}"
         
         return whatsapp_link
+
     
     def collect_lead_info(self, question, cid):
         """Handle step-by-step lead collection"""
@@ -315,3 +319,4 @@ Answer:"""
         
         self.add_to_memory(cid, question, answer)
         return answer
+
