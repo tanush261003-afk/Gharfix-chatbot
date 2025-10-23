@@ -5,7 +5,6 @@ import google.generativeai as genai
 import logging
 from datetime import datetime
 import urllib.parse
-import webbrowser
 
 load_dotenv()
 
@@ -31,8 +30,17 @@ class RAGChatbot:
             self.conversation_memory = {}
             self.lead_collection = {}
             
-            # GharFix WhatsApp number (update with your actual number)
-            self.whatsapp_number = "917506855407"  # Format: country code + number (no spaces)
+            # GharFix WhatsApp number
+            self.whatsapp_number = "917506855407"
+            
+            # Valid services list
+            self.valid_services = [
+                "Tailoring", "Massage", "NRI Services", "Ghar Bazaar", "Plumbing",
+                "Financing", "MacBook Repair", "Elderly Care", "Ghar Chef",
+                "Bridal Makeup", "Mehendi", "Digital Signage", "Banner", "RO Service",
+                "Water Purifier", "Rituals", "Electrical", "Housekeeping", "Cleaning",
+                "Water Tank Cleaning", "GharMaid", "Maid", "Society Maintenance", "Driver"
+            ]
             
             self.knowledge_base = """
 GharFix Services Overview - Complete Details:
@@ -130,19 +138,30 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
             logging.error(f"Error searching knowledge: {str(e)}")
             return []
     
+    def validate_service(self, service_input):
+        """Check if service is valid, suggest alternatives if not"""
+        service_lower = service_input.lower().strip()
+        
+        # Check for exact or partial matches
+        for valid_service in self.valid_services:
+            if service_lower in valid_service.lower() or valid_service.lower() in service_lower:
+                return True, valid_service
+        
+        return False, None
+    
     def generate_request_id(self):
         """Generate unique request ID"""
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         return f"CHAT-{timestamp}"
     
-    def generate_whatsapp_link(self, lead_data):
-        """Generate WhatsApp link with pre-filled message"""
+    def send_to_whatsapp(self, lead_data):
+        """Return WhatsApp link - browser will auto-open it"""
         now = datetime.now()
         date_str = now.strftime("%d/%m/%Y")
         time_str = now.strftime("%I:%M %p")
         
-        # Create formatted message
-        message = f"""🏠 NEW LEAD ALERT
+        # Create formatted message WITHOUT emoji (WhatsApp displays better)
+        message = f"""NEW LEAD ALERT
 
 Request ID: {lead_data['request_id']}
 Date: {date_str}
@@ -159,7 +178,7 @@ Automated by GharFix chatbot"""
         # URL encode the message
         encoded_message = urllib.parse.quote(message)
         
-        # Generate WhatsApp link
+        # Generate WhatsApp link that auto-opens
         whatsapp_link = f"https://wa.me/{self.whatsapp_number}?text={encoded_message}"
         
         return whatsapp_link
@@ -171,28 +190,34 @@ Automated by GharFix chatbot"""
         # Initialize lead collection
         if not lead:
             self.lead_collection[cid] = {"step": "name", "data": {}}
-            return "Great! I'd love to help you book a service. Let me collect some details.\n\n👤 **What's your name?**"
+            return "Great! I'd love to help you book a service. Let me collect some details.\n\n👤 What's your name?"
         
         # Step 1: Collect Name
         if lead["step"] == "name":
             lead["data"]["name"] = question.strip()
             lead["step"] = "phone"
             self.lead_collection[cid] = lead
-            return f"Nice to meet you, {question.strip()}! 📱\n\n**What's your phone number?**"
+            return f"Nice to meet you, {question.strip()}! 📱\n\nWhat's your phone number?"
         
         # Step 2: Collect Phone
         elif lead["step"] == "phone":
             lead["data"]["phone"] = question.strip()
             lead["step"] = "service"
             self.lead_collection[cid] = lead
-            return "Perfect! 🔧\n\n**Which service do you need?**\n\n(Examples: Plumbing, Cleaning, Electrical, Massage, Chef, Tailoring, etc.)"
+            return f"Perfect! 🔧\n\nWhich service do you need?\n\nAvailable services:\n• Plumbing\n• Electrical\n• Cleaning\n• Massage\n• Chef\n• Tailoring\n• Elderly Care\n• Water Tank Cleaning\n• And more!\n\nPlease type the service name:"
         
-        # Step 3: Collect Service
+        # Step 3: Collect Service with validation
         elif lead["step"] == "service":
-            lead["data"]["service"] = question.strip()
-            lead["step"] = "location"
-            self.lead_collection[cid] = lead
-            return "Excellent choice! 📍\n\n**What's your location/address?**"
+            is_valid, matched_service = self.validate_service(question.strip())
+            
+            if is_valid:
+                lead["data"]["service"] = matched_service
+                lead["step"] = "location"
+                self.lead_collection[cid] = lead
+                return "Excellent choice! 📍\n\nWhat's your location/address?"
+            else:
+                # Invalid service - suggest valid ones
+                return f"Sorry, '{question.strip()}' is not a service we currently offer.\n\nOur available services are:\n• Plumbing\n• Electrical\n• Cleaning\n• Massage\n• Chef\n• Tailoring\n• Elderly Care\n• MacBook Repair\n• Water Tank Cleaning\n• Maid Service\n• Driver Service\n\nPlease choose from the list above:"
         
         # Step 4: Collect Location
         elif lead["step"] == "location":
@@ -201,19 +226,19 @@ Automated by GharFix chatbot"""
             lead["step"] = "confirm"
             self.lead_collection[cid] = lead
             
-            # Show summary and ask for confirmation
-            return f"""📋 **Booking Summary:**
+            # Show summary WITHOUT markdown
+            return f"""📋 Booking Summary:
 
-👤 **Name:** {lead['data']['name']}
-📱 **Phone:** {lead['data']['phone']}
-🔧 **Service:** {lead['data']['service']}
-📍 **Location:** {lead['data']['location']}
-📝 **Status:** Interested
+👤 Name: {lead['data']['name']}
+📱 Phone: {lead['data']['phone']}
+🔧 Service: {lead['data']['service']}
+📍 Location: {lead['data']['location']}
+📝 Status: Interested
 
-✅ **Is this information correct?**
+✅ Is this information correct?
 
-Type **"Yes"** to confirm and submit your request.
-Type **"No"** to start over."""
+Type "Yes" to confirm and submit your request.
+Type "No" to start over."""
         
         # Step 5: Confirmation
         elif lead["step"] == "confirm":
@@ -221,34 +246,23 @@ Type **"No"** to start over."""
             
             if response in ["yes", "y", "yeah", "yep", "confirm", "correct"]:
                 # Generate WhatsApp link
-                whatsapp_link = self.generate_whatsapp_link(lead["data"])
+                whatsapp_link = self.send_to_whatsapp(lead["data"])
                 
-                # Store lead data (optional - for your records)
-                logging.info(f"Lead collected: {lead['data']}")
+                # Log the lead
+                logging.info(f"✅ Lead submitted: {lead['data']}")
                 
                 # Clear lead collection
                 del self.lead_collection[cid]
                 
-                # Return success message with WhatsApp link
-                return f"""✅ **Booking Request Submitted Successfully!**
-
-🎉 Your request has been registered with ID: **{lead['data']['request_id']}**
-
-📲 **Click the button below to send this to our WhatsApp:**
-
-**[📱 SEND TO WHATSAPP]({whatsapp_link})**
-
-This will open WhatsApp with your booking details pre-filled. Just click send and our team will contact you within 30 minutes!
-
-Thank you for choosing GharFix! 🏠✨"""
+                # Return ONLY the WhatsApp link (frontend will auto-open it)
+                return f"WHATSAPP_REDIRECT:{whatsapp_link}"
             
             elif response in ["no", "n", "nope", "cancel", "restart"]:
-                # Clear lead collection and restart
                 del self.lead_collection[cid]
-                return "No problem! Let's start over. Type **'book now'** when you're ready to try again."
+                return "No problem! Let's start over. Type 'book now' when you're ready."
             
             else:
-                return "Please type **'Yes'** to confirm or **'No'** to cancel."
+                return "Please type 'Yes' to confirm or 'No' to cancel."
     
     def chat_with_rag(self, question, cid="default"):
         try:
@@ -262,16 +276,17 @@ Thank you for choosing GharFix! 🏠✨"""
             docs = self.search_knowledge(question)
             context = "\n".join(docs)
             
-            prompt = f"""You are GharFix's official customer assistant. Answer clearly and concisely.
+            prompt = f"""You are GharFix's official customer assistant. Answer clearly and concisely WITHOUT using markdown formatting.
 
 Rules:
 - Use the information in the context below.
+- DO NOT use markdown formatting (no **, __, etc.)
 - If the context is not helpful, answer generally in 2–3 sentences.
 - Tone: professional, supportive, and helpful.
-- Keep answers <5 sentences unless asked for all services
+- Keep answers under 5 sentences unless asked for all services
 - If the user asks for ALL services → list every service in numbered format
 - If service not available → say: "I don't think we provide that service, but please call/message at +91 75068 55407 for confirmation".
-- If the user wants to book a service, say: "I can help you book a service! Just type **'book now'** and I'll collect your details."
+- If the user wants to book a service, say: "I can help you book a service! Just type 'book now' and I'll collect your details."
 
 CONVERSATION HISTORY:
 {history}
