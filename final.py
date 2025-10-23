@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import chromadb
 import google.generativeai as genai
 import logging
-from datetime import datetime, timezone, timedelta  # Added timezone and timedelta
+from datetime import datetime, timezone, timedelta
 import urllib.parse
 
 load_dotenv()
@@ -16,7 +16,12 @@ class RAGChatbot:
                 raise ValueError("GEMINI_API_KEY not set")
             
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-2.0-flash")
+            
+            # Use Gemini 2.0 Flash (or 1.5-flash if 2.0 not available yet)
+            try:
+                self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+            except:
+                self.model = genai.GenerativeModel("gemini-1.5-flash")
             
             # ChromaDB setup
             self.client = chromadb.PersistentClient(path="./chroma_db")
@@ -36,7 +41,7 @@ class RAGChatbot:
             # Valid services list
             self.valid_services = [
                 "Tailoring", "Massage", "NRI Services", "Ghar Bazaar", "Plumbing",
-                "Financing", "MacBook Repair", "Elderly Care", "Ghar Chef",
+                "Financing", "MacBook Repair", "Elderly Care", "Ghar Chef", "Chef",
                 "Bridal Makeup", "Mehendi", "Digital Signage", "Banner", "RO Service",
                 "Water Purifier", "Rituals", "Electrical", "Housekeeping", "Cleaning",
                 "Water Tank Cleaning", "GharMaid", "Maid", "Society Maintenance", "Driver"
@@ -114,7 +119,7 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
         mem = self.conversation_memory.get(cid, [])
         return "\n".join(f"User: {e['user']}\nAssistant: {e['bot']}" for e in mem)
     
-    def search_knowledge(self, query, n_results=5):
+    def search_knowledge(self, query, n_results=1):
         """Retrieve relevant docs via embeddings & ChromaDB"""
         try:
             resp = genai.embed_content(
@@ -149,14 +154,13 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
         
         return False, None
     
-   def generate_request_id(self):
+    def generate_request_id(self):
         """Generate unique request ID with IST timezone"""
         # IST is UTC+5:30
         ist = timezone(timedelta(hours=5, minutes=30))
         now = datetime.now(ist)
         timestamp = now.strftime("%Y%m%d%H%M%S")
         return f"CHAT-{timestamp}"
-
     
     def send_to_whatsapp(self, lead_data):
         """Return WhatsApp link - browser will auto-open it"""
@@ -167,25 +171,28 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
         date_str = now.strftime("%d/%m/%Y")
         time_str = now.strftime("%I:%M %p")
         
+        # Create formatted message WITHOUT emoji (WhatsApp displays better)
         message = f"""NEW LEAD ALERT
-    
-    Request ID: {lead_data['request_id']}
-    Date: {date_str}
-    Time: {time_str}
-    Customer: {lead_data['name']}
-    Mobile: {lead_data['phone']}
-    Service: {lead_data['service']}
-    Location: {lead_data['location']}
-    Status: Interested
-    
-    ----------------------------------
-    Automated by GharFix chatbot"""
+
+Request ID: {lead_data['request_id']}
+Date: {date_str}
+Time: {time_str}
+Customer: {lead_data['name']}
+Mobile: {lead_data['phone']}
+Service: {lead_data['service']}
+Location: {lead_data['location']}
+Status: Interested
+
+----------------------------------
+Automated by GharFix chatbot"""
         
+        # URL encode the message
         encoded_message = urllib.parse.quote(message)
+        
+        # Generate WhatsApp link that auto-opens
         whatsapp_link = f"https://wa.me/{self.whatsapp_number}?text={encoded_message}"
         
         return whatsapp_link
-
     
     def collect_lead_info(self, question, cid):
         """Handle step-by-step lead collection"""
@@ -208,7 +215,7 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
             lead["data"]["phone"] = question.strip()
             lead["step"] = "service"
             self.lead_collection[cid] = lead
-            return f"Perfect! 🔧\n\nWhich service do you need?\n\nAvailable services:\n• Plumbing\n• Electrical\n• Cleaning\n• Massage\n• Chef\n• Tailoring\n• Elderly Care\n• Water Tank Cleaning\n• And more!\n\nPlease type the service name:"
+            return "Perfect! 🔧\n\nWhich service do you need?\n\nAvailable services:\n• Plumbing\n• Electrical\n• Cleaning\n• Massage\n• Chef\n• Tailoring\n• Elderly Care\n• Water Tank Cleaning\n• Maid Service\n• Driver Service\n• And more!\n\nPlease type the service name:"
         
         # Step 3: Collect Service with validation
         elif lead["step"] == "service":
@@ -221,7 +228,7 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
                 return "Excellent choice! 📍\n\nWhat's your location/address?"
             else:
                 # Invalid service - suggest valid ones
-                return f"Sorry, '{question.strip()}' is not a service we currently offer.\n\nOur available services are:\n• Plumbing\n• Electrical\n• Cleaning\n• Massage\n• Chef\n• Tailoring\n• Elderly Care\n• MacBook Repair\n• Water Tank Cleaning\n• Maid Service\n• Driver Service\n\nPlease choose from the list above:"
+                return f"Sorry, '{question.strip()}' is not a service we currently offer.\n\nOur available services are:\n• Plumbing\n• Electrical\n• Cleaning\n• Massage\n• Chef\n• Tailoring\n• Elderly Care\n• MacBook Repair\n• Water Tank Cleaning\n• Maid Service\n• Driver Service\n• NRI Services\n• Society Maintenance\n\nPlease choose from the list above:"
         
         # Step 4: Collect Location
         elif lead["step"] == "location":
@@ -258,7 +265,7 @@ Type "No" to start over."""
                 # Clear lead collection
                 del self.lead_collection[cid]
                 
-                # Return ONLY the WhatsApp link (frontend will auto-open it)
+                # Return ONLY the WhatsApp redirect signal (frontend will auto-open it)
                 return f"WHATSAPP_REDIRECT:{whatsapp_link}"
             
             elif response in ["no", "n", "nope", "cancel", "restart"]:
@@ -319,5 +326,3 @@ Answer:"""
         
         self.add_to_memory(cid, question, answer)
         return answer
-
-
