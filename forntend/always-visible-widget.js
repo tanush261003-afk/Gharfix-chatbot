@@ -1,4 +1,4 @@
-/*! GharFix Always-Visible Chatbot Widget v1.0.1 */
+/*! GharFix Always-Visible Chatbot Widget v2.0 - With Auto WhatsApp Redirect */
 (function() {
   'use strict';
 
@@ -22,17 +22,17 @@
 What service do you need today?`,
     QUICK_ACTIONS: [
       { key: 'our_services', label: 'Our Services', message: 'List all the services' },
-      { key: 'book_now',    label: 'Book Now',      message: 'I want to book a service' },
-      { key: 'pricing',     label: 'Pricing',       message: 'What are your rates?' },
-      { key: 'emergency',   label: 'Emergency',     message: 'I need emergency help' }
+      { key: 'book_service', label: '📅 Book Service', message: 'book now' },
+      { key: 'pricing', label: 'Pricing', message: 'What are your rates?' },
+      { key: 'emergency', label: 'Emergency', message: 'I need emergency help' }
     ]
   };
 
   // State
   let conversationId = getOrCreateConversationId();
-  let isTyping       = false;
-  let isMinimized    = localStorage.getItem(CONFIG.MINIMIZED_KEY) === 'true';
-  let elements       = {};
+  let isTyping = false;
+  let isMinimized = localStorage.getItem(CONFIG.MINIMIZED_KEY) === 'true';
+  let elements = {};
 
   // Helpers
   function getOrCreateConversationId() {
@@ -62,10 +62,10 @@ What service do you need today?`,
   function buildWidget() {
     // Minimize button
     const minBtn = createEl('button', {
-      id:    'gfc-minimize',
-      type:  'button',
+      id: 'gfc-minimize',
+      type: 'button',
       title: isMinimized ? 'Expand chat' : 'Minimize chat'
-    }, [ isMinimized ? '+' : '−' ]);
+    }, [isMinimized ? '+' : '−']);
 
     // Header
     const header = createEl('div', { id: 'gfc-header' }, [
@@ -82,7 +82,7 @@ What service do you need today?`,
     CONFIG.QUICK_ACTIONS.forEach(action => {
       const btn = createEl('button', {
         className: 'gfc-quick-btn',
-        type:      'button',
+        type: 'button',
         'data-key': action.key
       }, [action.label]);
       btn.addEventListener('click', () => handleQuick(action));
@@ -90,13 +90,18 @@ What service do you need today?`,
     });
 
     // Input area
-    const input     = createEl('input', { id: 'gfc-input', type: 'text', placeholder: 'Type your message...', autocomplete: 'off' });
-    const sendBtn   = createEl('button', { id: 'gfc-send', type: 'submit' }, ['Send']);
-    const inputBar  = createEl('form', { id: 'gfc-inputbar', autocomplete: 'off' }, [input, sendBtn]);
+    const input = createEl('input', {
+      id: 'gfc-input',
+      type: 'text',
+      placeholder: 'Type your message...',
+      autocomplete: 'off'
+    });
+    const sendBtn = createEl('button', { id: 'gfc-send', type: 'submit' }, ['Send']);
+    const inputBar = createEl('form', { id: 'gfc-inputbar', autocomplete: 'off' }, [input, sendBtn]);
 
     // Container
     const container = createEl('div', {
-      id:        'gfc-always-chat',
+      id: 'gfc-always-chat',
       className: isMinimized ? 'minimized' : ''
     }, [header, messages, qa, inputBar]);
 
@@ -113,7 +118,7 @@ What service do you need today?`,
   }
 
   function showTyping() {
-    const dots = [1,2,3].map(() => createEl('span', { className: 'dot' }));
+    const dots = [1, 2, 3].map(() => createEl('span', { className: 'dot' }));
     const typing = createEl('div', { className: 'gfc-typing' }, ['Assistant is typing', ...dots]);
     const bubble = createEl('div', { className: 'gfc-bubble' }, [typing]);
     const row = createEl('div', { className: 'gfc-msg gfc-bot', id: 'gfc-typing' }, [bubble]);
@@ -126,10 +131,10 @@ What service do you need today?`,
     if (el) el.remove();
   }
 
-  // API call
+  // API call with WhatsApp redirect handling
   async function sendMessage(text) {
     if (isTyping) return;
-    isTyping       = true;
+    isTyping = true;
     elements.sendBtn.disabled = true;
     showTyping();
 
@@ -142,13 +147,33 @@ What service do you need today?`,
       hideTyping();
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      addMessage(data.response || 'Sorry, cannot process your request.', 'bot');
+
+      // CHECK FOR WHATSAPP REDIRECT
+      if (data.response && data.response.startsWith('WHATSAPP_REDIRECT:')) {
+        const whatsappLink = data.response.replace('WHATSAPP_REDIRECT:', '');
+        
+        // Show success message
+        addMessage('✅ Booking confirmed! Opening WhatsApp in 2 seconds...', 'bot');
+        
+        // Auto-open WhatsApp after 2 seconds
+        setTimeout(() => {
+          window.open(whatsappLink, '_blank');
+          
+          // Show follow-up message
+          setTimeout(() => {
+            addMessage('WhatsApp opened! Please click Send in WhatsApp to submit your booking. Our team will contact you within 30 minutes. 🏠', 'bot');
+          }, 500);
+        }, 2000);
+      } else {
+        // Normal message
+        addMessage(data.response || 'Sorry, cannot process your request.', 'bot');
+      }
     } catch (err) {
       hideTyping();
       console.error(err);
       addMessage('Network error. Please try again later.', 'bot');
     } finally {
-      isTyping       = false;
+      isTyping = false;
       elements.sendBtn.disabled = false;
     }
   }
@@ -165,8 +190,10 @@ What service do you need today?`,
 
   function handleQuick(action) {
     if (isMinimized) toggleMinimize();
-    addMessage(action.message, 'user');
-    sendMessage(action.message);
+    setTimeout(() => {
+      addMessage(action.message, 'user');
+      sendMessage(action.message);
+    }, isMinimized ? 300 : 0);
   }
 
   function handleSubmit(evt) {
@@ -183,7 +210,7 @@ What service do you need today?`,
   }
 
   function handleContainerClick(evt) {
-    // If minimized and clicking anywhere on container (excluding input)
+    // If minimized and clicking anywhere on container (excluding buttons)
     if (isMinimized && evt.target === elements.container) {
       toggleMinimize();
     }
@@ -195,17 +222,20 @@ What service do you need today?`,
     document.body.appendChild(elements.container);
 
     // Listeners
-    elements.minBtn.addEventListener('click', toggleMinimize);
+    elements.minBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMinimize();
+    });
     elements.inputBar.addEventListener('submit', handleSubmit);
     elements.container.addEventListener('click', handleContainerClick);
 
-    // Show welcome if expanded
+    // Show welcome message if not minimized
     setTimeout(() => {
-  // Always show welcome message when widget first loads
-  if (elements.messages.children.length === 0) {
-    addMessage(CONFIG.WELCOME_MESSAGE, 'bot');
-  }
-}, 500);
+      if (elements.messages.children.length === 0) {
+        addMessage(CONFIG.WELCOME_MESSAGE, 'bot');
+      }
+    }, 500);
+
     elements.minBtn.textContent = isMinimized ? '+' : '−';
     elements.minBtn.title = isMinimized ? 'Expand chat' : 'Minimize chat';
   }
@@ -220,7 +250,14 @@ What service do you need today?`,
   window.GharFixAlwaysWidget = {
     expand: () => { if (isMinimized) toggleMinimize(); },
     minimize: () => { if (!isMinimized) toggleMinimize(); },
-    toggle: toggleMinimize
+    toggle: toggleMinimize,
+    sendMessage: (text) => {
+      if (isMinimized) toggleMinimize();
+      setTimeout(() => {
+        addMessage(text, 'user');
+        sendMessage(text);
+      }, 300);
+    }
   };
 
 })();
