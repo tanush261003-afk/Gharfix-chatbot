@@ -5,6 +5,7 @@ import google.generativeai as genai
 import logging
 from datetime import datetime, timezone, timedelta
 import urllib.parse
+import re
 
 load_dotenv()
 
@@ -45,6 +46,16 @@ class RAGChatbot:
                 "Bridal Makeup", "Mehendi", "Digital Signage", "Banner", "RO Service",
                 "Water Purifier", "Rituals", "Electrical", "Housekeeping", "Cleaning",
                 "Water Tank Cleaning", "GharMaid", "Maid", "Society Maintenance", "Driver"
+            ]
+            
+            # Valid cities/locations in India
+            self.valid_locations = [
+                "Mumbai", "Navi Mumbai", "Thane", "Pune", "Delhi", "New Delhi",
+                "Bangalore", "Bengaluru", "Chennai", "Hyderabad", "Kolkata",
+                "Lucknow", "Kanpur", "Ahmedabad", "Surat", "Jaipur", "Indore",
+                "Bhopal", "Patna", "Nagpur", "Goa", "Chandigarh", "Gurgaon",
+                "Noida", "Greater Noida", "Faridabad", "Ghaziabad", "Andheri",
+                "Bandra", "Dadar", "Worli", "Powai", "Malad", "Borivali"
             ]
             
             self.knowledge_base = """
@@ -143,6 +154,68 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
             logging.error(f"Error searching knowledge: {str(e)}")
             return []
     
+    def validate_name(self, name_input):
+        """Validate name - must be 2-50 characters, only letters and spaces"""
+        name_clean = name_input.strip()
+        
+        # Check for commands or invalid patterns
+        invalid_patterns = ['list', 'show', 'service', 'help', 'what', 'how', 'price', 'rate', 'cost']
+        if any(pattern in name_clean.lower() for pattern in invalid_patterns):
+            return False, "That doesn't look like a name"
+        
+        # Check length and characters
+        if len(name_clean) < 2 or len(name_clean) > 50:
+            return False, "Name must be between 2-50 characters"
+        
+        # Allow only letters, spaces, and common name characters
+        if not re.match(r'^[A-Za-z][A-Za-z\s.\']+$', name_clean):
+            return False, "Name can only contain letters and spaces"
+        
+        return True, name_clean.title()
+    
+    def validate_phone(self, phone_input):
+        """Validate phone - must be exactly 10 digits"""
+        phone_clean = re.sub(r'[^\d]', '', phone_input.strip())
+        
+        # Check if exactly 10 digits
+        if len(phone_clean) == 10 and phone_clean.isdigit():
+            # Check if starts with valid digit (6-9 for Indian mobile)
+            if phone_clean[0] in ['6', '7', '8', '9']:
+                return True, phone_clean
+            else:
+                return False, "Indian mobile numbers start with 6, 7, 8, or 9"
+        else:
+            return False, "Phone number must be exactly 10 digits"
+    
+    def validate_location(self, location_input):
+        """Validate location - check if it's a real place"""
+        location_clean = location_input.strip()
+        
+        # Check for invalid patterns
+        invalid_patterns = ['i don\'t know', 'idk', 'not sure', 'help', 'what', 'where', 'list', 'show']
+        if any(pattern in location_clean.lower() for pattern in invalid_patterns):
+            return False, "Please provide a valid city or area name"
+        
+        # Check if too short
+        if len(location_clean) < 3:
+            return False, "Location name is too short"
+        
+        # Check if location contains at least some letters
+        if not re.search(r'[A-Za-z]', location_clean):
+            return False, "Please enter a valid location name"
+        
+        # Check against known cities (fuzzy match)
+        location_lower = location_clean.lower()
+        for valid_loc in self.valid_locations:
+            if valid_loc.lower() in location_lower or location_lower in valid_loc.lower():
+                return True, valid_loc
+        
+        # If not in list but looks valid, accept it
+        if re.match(r'^[A-Za-z\s,.-]+$', location_clean):
+            return True, location_clean.title()
+        
+        return False, "Please enter a valid city or area name"
+    
     def validate_service(self, service_input):
         """Check if service is valid, suggest alternatives if not"""
         service_lower = service_input.lower().strip()
@@ -156,7 +229,6 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
     
     def generate_request_id(self):
         """Generate unique request ID with IST timezone"""
-        # IST is UTC+5:30
         ist = timezone(timedelta(hours=5, minutes=30))
         now = datetime.now(ist)
         timestamp = now.strftime("%Y%m%d%H%M%S")
@@ -164,14 +236,12 @@ CONTACT: For booking or queries, WhatsApp or call +91 75068 55407
     
     def send_to_whatsapp(self, lead_data):
         """Return WhatsApp link - browser will auto-open it"""
-        # IST is UTC+5:30
         ist = timezone(timedelta(hours=5, minutes=30))
         now = datetime.now(ist)
         
         date_str = now.strftime("%d/%m/%Y")
         time_str = now.strftime("%I:%M %p")
         
-        # Create formatted message WITHOUT emoji (WhatsApp displays better)
         message = f"""NEW LEAD ALERT
 
 Request ID: {lead_data['request_id']}
@@ -186,38 +256,52 @@ Status: Interested
 ----------------------------------
 Automated by GharFix chatbot"""
         
-        # URL encode the message
         encoded_message = urllib.parse.quote(message)
-        
-        # Generate WhatsApp link that auto-opens
         whatsapp_link = f"https://wa.me/{self.whatsapp_number}?text={encoded_message}"
         
         return whatsapp_link
     
     def collect_lead_info(self, question, cid):
-        """Handle step-by-step lead collection"""
+        """Handle step-by-step lead collection with validation"""
         lead = self.lead_collection.get(cid, {})
+        
+        # Check if user wants to exit booking flow
+        exit_keywords = ['cancel', 'exit', 'stop', 'quit', 'nevermind', 'back']
+        if question.strip().lower() in exit_keywords:
+            if cid in self.lead_collection:
+                del self.lead_collection[cid]
+            return "Booking cancelled. How else can I help you today?"
         
         # Initialize lead collection
         if not lead:
             self.lead_collection[cid] = {"step": "name", "data": {}}
-            return "Great! I'd love to help you book a service. Let me collect some details.\n\n👤 What's your name?"
+            return "Great! I'd love to help you book a service. Let me collect some details.\n\n👤 What's your name?\n\n(Type 'cancel' anytime to exit)"
         
-        # Step 1: Collect Name
+        # Step 1: Collect and validate Name
         if lead["step"] == "name":
-            lead["data"]["name"] = question.strip()
-            lead["step"] = "phone"
-            self.lead_collection[cid] = lead
-            return f"Nice to meet you, {question.strip()}! 📱\n\nWhat's your phone number?"
+            is_valid, result = self.validate_name(question)
+            
+            if is_valid:
+                lead["data"]["name"] = result
+                lead["step"] = "phone"
+                self.lead_collection[cid] = lead
+                return f"Nice to meet you, {result}! 📱\n\nWhat's your 10-digit mobile number?"
+            else:
+                return f"❌ {result}. Please enter your full name:"
         
-        # Step 2: Collect Phone
+        # Step 2: Collect and validate Phone
         elif lead["step"] == "phone":
-            lead["data"]["phone"] = question.strip()
-            lead["step"] = "service"
-            self.lead_collection[cid] = lead
-            return "Perfect! 🔧\n\nWhich service do you need?\n\nAvailable services:\n• Plumbing\n• Electrical\n• Cleaning\n• Massage\n• Chef\n• Tailoring\n• Elderly Care\n• Water Tank Cleaning\n• Maid Service\n• Driver Service\n• And more!\n\nPlease type the service name:"
+            is_valid, result = self.validate_phone(question)
+            
+            if is_valid:
+                lead["data"]["phone"] = result
+                lead["step"] = "service"
+                self.lead_collection[cid] = lead
+                return "Perfect! 🔧\n\nWhich service do you need?\n\nAvailable services:\n• Plumbing\n• Electrical\n• Cleaning\n• Massage\n• Chef\n• Tailoring\n• Elderly Care\n• Water Tank Cleaning\n• Maid Service\n• Driver Service\n\nPlease type the service name:"
+            else:
+                return f"❌ {result}. Please enter a valid 10-digit mobile number:"
         
-        # Step 3: Collect Service with validation
+        # Step 3: Collect and validate Service
         elif lead["step"] == "service":
             is_valid, matched_service = self.validate_service(question.strip())
             
@@ -225,20 +309,21 @@ Automated by GharFix chatbot"""
                 lead["data"]["service"] = matched_service
                 lead["step"] = "location"
                 self.lead_collection[cid] = lead
-                return "Excellent choice! 📍\n\nWhat's your location/address?"
+                return "Excellent choice! 📍\n\nWhat's your city or area?\n\n(Example: Mumbai, Navi Mumbai, Andheri, etc.)"
             else:
-                # Invalid service - suggest valid ones
-                return f"Sorry, '{question.strip()}' is not a service we currently offer.\n\nOur available services are:\n• Plumbing\n• Electrical\n• Cleaning\n• Massage\n• Chef\n• Tailoring\n• Elderly Care\n• MacBook Repair\n• Water Tank Cleaning\n• Maid Service\n• Driver Service\n• NRI Services\n• Society Maintenance\n\nPlease choose from the list above:"
+                return f"❌ Sorry, '{question.strip()}' is not available.\n\nPlease choose from:\n• Plumbing • Electrical • Cleaning\n• Massage • Chef • Tailoring\n• Elderly Care • MacBook Repair\n• Water Tank Cleaning • Maid Service\n• Driver Service • NRI Services"
         
-        # Step 4: Collect Location
+        # Step 4: Collect and validate Location
         elif lead["step"] == "location":
-            lead["data"]["location"] = question.strip()
-            lead["data"]["request_id"] = self.generate_request_id()
-            lead["step"] = "confirm"
-            self.lead_collection[cid] = lead
+            is_valid, result = self.validate_location(question)
             
-            # Show summary WITHOUT markdown
-            return f"""📋 Booking Summary:
+            if is_valid:
+                lead["data"]["location"] = result
+                lead["data"]["request_id"] = self.generate_request_id()
+                lead["step"] = "confirm"
+                self.lead_collection[cid] = lead
+                
+                return f"""📋 Booking Summary:
 
 👤 Name: {lead['data']['name']}
 📱 Phone: {lead['data']['phone']}
@@ -248,39 +333,37 @@ Automated by GharFix chatbot"""
 
 ✅ Is this information correct?
 
-Type "Yes" to confirm and submit your request.
+Type "Yes" to confirm and submit.
 Type "No" to start over."""
+            else:
+                return f"❌ {result}. Please enter your city or area:"
         
         # Step 5: Confirmation
         elif lead["step"] == "confirm":
             response = question.strip().lower()
             
-            if response in ["yes", "y", "yeah", "yep", "confirm", "correct"]:
-                # Generate WhatsApp link
+            if response in ["yes", "y", "yeah", "yep", "confirm", "correct", "ok", "okay"]:
                 whatsapp_link = self.send_to_whatsapp(lead["data"])
-                
-                # Log the lead
                 logging.info(f"✅ Lead submitted: {lead['data']}")
-                
-                # Clear lead collection
                 del self.lead_collection[cid]
-                
-                # Return ONLY the WhatsApp redirect signal (frontend will auto-open it)
                 return f"WHATSAPP_REDIRECT:{whatsapp_link}"
             
-            elif response in ["no", "n", "nope", "cancel", "restart"]:
+            elif response in ["no", "n", "nope"]:
                 del self.lead_collection[cid]
                 return "No problem! Let's start over. Type 'book now' when you're ready."
             
             else:
-                return "Please type 'Yes' to confirm or 'No' to cancel."
+                return "Please type 'Yes' to confirm or 'No' to restart."
     
     def chat_with_rag(self, question, cid="default"):
         try:
-            # Check if user wants to book a service or is in booking flow
-            booking_keywords = ["book", "booking", "book now", "schedule", "appointment", "service booking", "i want to book"]
+            # Check if user is in booking flow
+            if cid in self.lead_collection:
+                return self.collect_lead_info(question, cid)
             
-            if any(keyword in question.lower() for keyword in booking_keywords) or cid in self.lead_collection:
+            # Check if user wants to book a service
+            booking_keywords = ["book", "booking", "book now", "schedule", "appointment", "service booking", "i want to book"]
+            if any(keyword in question.lower() for keyword in booking_keywords):
                 return self.collect_lead_info(question, cid)
             
             history = self.get_conversation_context(cid)
@@ -296,8 +379,9 @@ Rules:
 - Tone: professional, supportive, and helpful.
 - Keep answers under 5 sentences unless asked for all services
 - If the user asks for ALL services → list every service in numbered format
-- If service not available → say: "I don't think we provide that service, but please call/message at +91 75068 55407 for confirmation".
-- If the user wants to book a service, say: "I can help you book a service! Just type 'book now' and I'll collect your details."
+- If the user asks about pricing/rates → say: "Our pricing varies by service and location. Please call +91 75068 55407 or type 'book now' to get a customized quote."
+- If service not available → say: "I don't think we provide that service, but please call/message at +91 75068 55407 for confirmation."
+- If the user wants to book → say: "I can help you book a service! Just type 'book now' and I'll collect your details."
 
 CONVERSATION HISTORY:
 {history}
