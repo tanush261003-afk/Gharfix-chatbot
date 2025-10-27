@@ -21,11 +21,11 @@
 
 What service do you need today?`,
     QUICK_ACTIONS: [
-      { key: 'our_services', label: 'Our Services', message: 'List all the services' },
-      { key: 'book_service', label: '📅 Book Service', message: 'book now' },
-      { key: 'pricing', label: 'Pricing', message: 'What are your rates?' },
-      { key: 'emergency', label: 'Emergency', message: 'I need emergency help' }
-    ]
+  { key: 'our_services', label: 'Our Services', message: 'List all the services' },
+  { key: 'book_service', label: '📅 Book Service', message: 'book now' },
+  { key: 'pricing', label: 'Pricing', message: 'What are your rates?' }
+]
+
   };
 
   // State
