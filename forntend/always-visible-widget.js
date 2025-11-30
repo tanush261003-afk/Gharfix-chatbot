@@ -4,7 +4,7 @@
 
   // Configuration
   const CONFIG = {
-    API_BASE: 'https://gharfix-chatbot.onrender.com',
+    API_BASE: 'https://gharfix-chatbot-3sjy.onrender.com',
     API_ENDPOINT: '/chat',
     TITLE: '🏠 GharFix Assistant',
     SUBTITLE: 'Always here to help',
