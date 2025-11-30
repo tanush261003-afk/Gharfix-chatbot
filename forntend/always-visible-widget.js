@@ -4,7 +4,7 @@
 
   // Configuration
   const CONFIG = {
-    API_BASE: 'https://gharfix-chatbot-3sjy.onrender.com',  // ✅ Updated URL
+    API_BASE: 'https://gharfix-chatbot-3sjy.onrender.com',
     API_ENDPOINT: '/chat',
     TITLE: '🏠 GharFix Assistant',
     SUBTITLE: 'Always here to help',
@@ -27,13 +27,11 @@ What service do you need today?`,
     ]
   };
 
-  // State
   let conversationId = getOrCreateConversationId();
   let isTyping = false;
   let isMinimized = localStorage.getItem(CONFIG.MINIMIZED_KEY) === 'true';
   let elements = {};
 
-  // Helpers
   function getOrCreateConversationId() {
     let id = localStorage.getItem(CONFIG.STORAGE_KEY);
     if (!id) {
@@ -57,7 +55,6 @@ What service do you need today?`,
     return el;
   }
 
-  // Build widget DOM
   function buildWidget() {
     const minBtn = createEl('button', {
       id: 'gfc-minimize',
@@ -101,7 +98,6 @@ What service do you need today?`,
     return { container, header, messages, input, sendBtn, minBtn, inputBar };
   }
 
-  // Message utilities
   function addMessage(text, sender) {
     const bubble = createEl('div', { className: 'gfc-bubble' });
     bubble.innerHTML = text.replace(/\n/g, '<br>');
@@ -124,7 +120,7 @@ What service do you need today?`,
     if (el) el.remove();
   }
 
-  // ✅ FIXED: API call with WhatsApp redirect handling
+  // ✅ CRITICAL: WhatsApp redirect handling
   async function sendMessage(text) {
     if (isTyping) return;
     isTyping = true;
@@ -144,21 +140,14 @@ What service do you need today?`,
       // ✅ CHECK FOR WHATSAPP REDIRECT
       if (data.response && data.response.startsWith('WHATSAPP_REDIRECT:')) {
         const whatsappLink = data.response.replace('WHATSAPP_REDIRECT:', '');
-        
-        // Show success message
         addMessage('✅ Booking confirmed! Opening WhatsApp in 2 seconds...', 'bot');
-        
-        // Auto-open WhatsApp after 2 seconds
         setTimeout(() => {
           window.open(whatsappLink, '_blank');
-          
-          // Show follow-up message
           setTimeout(() => {
-            addMessage('WhatsApp opened! Please click Send in WhatsApp to submit your booking. Our team will contact you within 30 minutes. 🏠', 'bot');
+            addMessage('WhatsApp opened! Please click Send to submit your booking. Our team will contact you within 30 minutes. 🏠', 'bot');
           }, 500);
         }, 2000);
       } else {
-        // Normal message
         addMessage(data.response || 'Sorry, cannot process your request.', 'bot');
       }
     } catch (err) {
@@ -171,7 +160,6 @@ What service do you need today?`,
     }
   }
 
-  // Event handlers
   function toggleMinimize() {
     isMinimized = !isMinimized;
     localStorage.setItem(CONFIG.MINIMIZED_KEY, isMinimized);
@@ -208,7 +196,6 @@ What service do you need today?`,
     }
   }
 
-  // Initialization
   function init() {
     elements = buildWidget();
     document.body.appendChild(elements.container);
@@ -236,7 +223,6 @@ What service do you need today?`,
     init();
   }
 
-  // Expose API
   window.GharFixAlwaysWidget = {
     expand: () => { if (isMinimized) toggleMinimize(); },
     minimize: () => { if (!isMinimized) toggleMinimize(); },
