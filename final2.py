@@ -24,13 +24,15 @@ app.add_middleware(
         "https://www.gharfix.com",
         "http://gharfix.com",
         "http://www.gharfix.com",
-        "https://gharfix-chatbot.onrender.com"
+        "https://gharfix-chatbot.onrender.com",  # Keep old one
+        "https://gharfix-chatbot-3sjy.onrender.com"  # ADD NEW ONE
     ],
     allow_credentials=False,
     allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
     max_age=3600,
 )
+
 
 # Initialize chatbot instance
 bot = None
@@ -84,4 +86,5 @@ async def root():
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
