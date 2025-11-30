@@ -20,9 +20,9 @@ class RAGChatbot:
             
             # Use Gemini 2.0 Flash (or 1.5-flash if 2.0 not available yet)
             try:
-                self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+                self.model = genai.GenerativeModel("gemini-2.0-flash")  # Stable version
             except:
-                self.model = genai.GenerativeModel("gemini-1.5-flash")
+                self.model = genai.GenerativeModel("gemini-2.5-flash")  # Latest fallback
             
             # ChromaDB setup
             self.client = chromadb.PersistentClient(path="./chroma_db")
@@ -410,3 +410,4 @@ Answer:"""
         
         self.add_to_memory(cid, question, answer)
         return answer
+
