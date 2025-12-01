@@ -1,43 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GharFix Assistant</title>
-    <link rel="stylesheet" href="/static/style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GharFix Chatbot</title>
+    <link rel="stylesheet" href="/static/always-visible-widget.css">
 </head>
 <body>
-    <div class="container">
-        <div class="chatbot-container" role="region" aria-label="GharFix Chatbot">
-            <header class="chatbot-header">
-                <h2>🏠 GharFix Assistant</h2>
-                <p>Your one-stop solution for home services</p>
-            </header>
-            
-            <main class="chat-messages" id="chatMessages" aria-live="polite" aria-atomic="false" tabindex="0">
-                <!-- Chat messages will show up here -->
-            </main>
-            
-            <form class="chat-input-container" autocomplete="off" aria-label="Chat input form">
-                <input
-                    type="text"
-                    id="messageInput"
-                    placeholder="Ask about our services, pricing, booking..."
-                    autocomplete="off"
-                    aria-label="Chat input"
-                    required
-                />
-                <button type="submit" id="sendButton" aria-label="Send message">Send</button>
-            </form>
-            
-            <nav class="quick-actions" aria-label="Quick message buttons">
-                <button class="quick-btn" type="button" data-msg="List all the services">Our Services</button>
-                <button class="quick-btn" type="button" data-msg="How do I book a service?">How to Book</button>
-                <button class="quick-btn" type="button" data-msg="What are your rates?">Pricing</button>
-            </nav>
-        </div>
+    <div style="text-align: center; padding: 20px; font-family: Arial, sans-serif;">
+        <h1>🏠 GharFix Chatbot Test</h1>
+        <p>The chatbot widget should appear on the right side.</p>
+        <p>Try booking a service and confirm with "yes" to test WhatsApp redirect.</p>
     </div>
-    
-    <script src="/static/front.js"></script>
+
+    <!-- ONLY load the new widget, NOT front.js -->
+    <script src="/static/always-visible-widget.js" defer></script>
 </body>
 </html>
