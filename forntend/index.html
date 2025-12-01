@@ -1,19 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GharFix Chatbot</title>
-    <link rel="stylesheet" href="/static/always-visible-widget.css">
+  <meta charset="UTF-8">
+  <title>GharFix Chatbot - Full Page</title>
+  <style>
+    body { margin:0; font-family:sans-serif; }
+    #main { max-width:600px; margin:40px auto; box-shadow:0 6px 30px #0002;padding:32px 22px;background:#fff;border-radius:18px;}
+    #messages { min-height:400px; max-height:500px; overflow-y:auto; border:1px solid #cce; border-radius:8px; padding:12px; }
+    .user { text-align:right; color:#1565c0; }
+    .bot { text-align:left; color:#1e88e5; }
+    #inputbar { display:flex; margin-top:16px; }
+    #text { flex:1; padding:10px;border:1px solid #89a;border-radius:15px; }
+    #send { padding:10px 22px; border:none; border-radius:15px; background:#1e88e5; color:#fff; margin-left:8px; }
+  </style>
 </head>
 <body>
-    <div style="text-align: center; padding: 20px; font-family: Arial, sans-serif;">
-        <h1>🏠 GharFix Chatbot Test</h1>
-        <p>The chatbot widget should appear on the right side.</p>
-        <p>Try booking a service and confirm with "yes" to test WhatsApp redirect.</p>
-    </div>
-
-    <!-- ONLY load the new widget, NOT front.js -->
-    <script src="/static/always-visible-widget.js" defer></script>
+  <div id="main">
+    <div id="messages"></div>
+    <form id="inputbar">
+      <input id="text" autocomplete="off" placeholder="Type a message...">
+      <button id="send" type="submit">Send</button>
+    </form>
+  </div>
+<script>
+const API = "https://gharfix-chatbot-3sjy.onrender.com/chat";
+const messages = document.getElementById('messages');
+function addMsg(text, who) {
+  // Do not show WhatsApp redirect
+  if (text.startsWith("WHATSAPP_REDIRECT:")) return;
+  let p = document.createElement('div');
+  p.className = who;
+  p.innerHTML = text.replace(/\n/g, "<br>");
+  messages.appendChild(p);
+  messages.scrollTop = messages.scrollHeight;
+}
+document.getElementById('inputbar').onsubmit = async (e) => {
+  e.preventDefault();
+  let v = text.value.trim();
+  if (!v) return;
+  addMsg(v, 'user');
+  text.value = "";
+  let res = await fetch(API, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ message: v, conversation_id: "fullpage-demo" })
+  });
+  let data = await res.json();
+  // WhatsApp redirect detection
+  if (data.response && data.response.startsWith('WHATSAPP_REDIRECT:')) {
+    let link = data.response.replace('WHATSAPP_REDIRECT:', '').trim();
+    setTimeout(() => {
+      window.open(link, "_blank");
+      addMsg("Booking confirmed! WhatsApp opened. Please tap Send.", "bot");
+    }, 800);
+  }
+  else {
+    addMsg(data.response, 'bot');
+  }
+};
+</script>
 </body>
 </html>
