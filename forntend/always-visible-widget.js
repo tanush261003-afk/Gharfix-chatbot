@@ -1,6 +1,7 @@
-/*! GharFix Always-Visible Chatbot Widget v2.1 - With Auto WhatsApp Redirect */
+/*! GharFix Always-Visible Chatbot Widget v3.0 - Direct WhatsApp Redirect */
 (function() {
   "use strict";
+
   const CONFIG = {
     API_BASE: "https://gharfix-chatbot-3sjy.onrender.com",
     API_ENDPOINT: "/chat",
@@ -54,61 +55,50 @@ What service do you need today?`,
   }
 
   function buildWidget() {
-    const minBtn = createEl(
-      "button",
-      {
-        id: "gfc-minimize",
-        type: "button",
-        title: isMinimized ? "Expand chat" : "Minimize chat"
-      },
-      [isMinimized ? "+" : "−"]
-    );
+    const minBtn = createEl("button", {
+      id: "gfc-minimize",
+      type: "button",
+      title: isMinimized ? "Expand chat" : "Minimize chat"
+    }, [isMinimized ? "+" : "−"]);
+
     const header = createEl("div", { id: "gfc-header" }, [
       createEl("h3", {}, [CONFIG.TITLE]),
       createEl("p", {}, [CONFIG.SUBTITLE]),
       minBtn
     ]);
+
     const messages = createEl("div", { id: "gfc-messages" });
+
     const qa = createEl("div", { className: "gfc-quick-actions" });
     CONFIG.QUICK_ACTIONS.forEach((action) => {
-      const btn = createEl(
-        "button",
-        {
-          className: "gfc-quick-btn",
-          type: "button",
-          "data-key": action.key
-        },
-        [action.label]
-      );
+      const btn = createEl("button", {
+        className: "gfc-quick-btn",
+        type: "button",
+        "data-key": action.key
+      }, [action.label]);
       btn.addEventListener("click", () => handleQuick(action));
       qa.appendChild(btn);
     });
+
     const input = createEl("input", {
       id: "gfc-input",
       type: "text",
       placeholder: "Type your message...",
       autocomplete: "off"
     });
+
     const sendBtn = createEl("button", { id: "gfc-send", type: "submit" }, ["Send"]);
-    const inputBar = createEl("form", { id: "gfc-inputbar", autocomplete: "off" }, [
-      input,
-      sendBtn
-    ]);
-    const container = createEl(
-      "div",
-      {
-        id: "gfc-always-chat",
-        className: isMinimized ? "minimized" : ""
-      },
-      [header, messages, qa, inputBar]
-    );
+    const inputBar = createEl("form", { id: "gfc-inputbar", autocomplete: "off" }, [input, sendBtn]);
+
+    const container = createEl("div", {
+      id: "gfc-always-chat",
+      className: isMinimized ? "minimized" : ""
+    }, [header, messages, qa, inputBar]);
 
     return { container, header, messages, input, sendBtn, minBtn, inputBar };
   }
 
   function addMessage(text, sender) {
-    // Don't display the redirect message as chat bubble
-    if (text && text.startsWith("WHATSAPP_REDIRECT:")) return;
     const bubble = createEl("div", { className: "gfc-bubble" });
     bubble.innerHTML = text.replace(/\n/g, "<br>");
     const msg = createEl("div", { className: `gfc-msg gfc-${sender}` }, [bubble]);
@@ -118,10 +108,7 @@ What service do you need today?`,
 
   function showTyping() {
     const dots = [1, 2, 3].map(() => createEl("span", { className: "dot" }));
-    const typing = createEl("div", { className: "gfc-typing" }, [
-      "Assistant is typing",
-      ...dots
-    ]);
+    const typing = createEl("div", { className: "gfc-typing" }, ["Assistant is typing", ...dots]);
     const bubble = createEl("div", { className: "gfc-bubble" }, [typing]);
     const row = createEl("div", { className: "gfc-msg gfc-bot", id: "gfc-typing" }, [bubble]);
     elements.messages.appendChild(row);
@@ -133,7 +120,7 @@ What service do you need today?`,
     if (el) el.remove();
   }
 
-  // KEY PART: WhatsApp redirect handling
+  // ✅ FIXED: WhatsApp redirect - INTERCEPT BEFORE CHAT
   async function sendMessage(text) {
     if (isTyping) return;
     isTyping = true;
@@ -146,26 +133,31 @@ What service do you need today?`,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, conversation_id: conversationId })
       });
+
       hideTyping();
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      const response = data.response || "";
 
-      // WhatsApp redirect response handling
-      if (data.response && data.response.startsWith("WHATSAPP_REDIRECT:")) {
-        const whatsappLink = data.response.replace("WHATSAPP_REDIRECT:", "");
-        // Show info
-        addMessage("✅ Booking confirmed! Redirecting to WhatsApp...", "bot");
+      // ✅ INTERCEPT WHATSAPP REDIRECT BEFORE DISPLAYING
+      if (response.includes("WHATSAPP_REDIRECT:")) {
+        const whatsappLink = response.substring(response.indexOf("https://wa.me"));
+        
+        // Show confirmation message
+        addMessage("✅ Booking confirmed! Opening WhatsApp...", "bot");
+        
+        // Wait 1.5 seconds then open WhatsApp
         setTimeout(() => {
           window.open(whatsappLink, "_blank");
-        }, 1000); // 1s delay for UX
-        setTimeout(() => {
-          addMessage(
-            "WhatsApp opened! Please click Send in WhatsApp to submit your booking. We'll contact you soon. 🏠",
-            "bot"
-          );
-        }, 2000);
+          
+          // Show final message after WhatsApp opens
+          setTimeout(() => {
+            addMessage("💬 WhatsApp opened! Just hit Send to complete your booking. We'll reach out within 30 mins. 🏠", "bot");
+          }, 800);
+        }, 1500);
       } else {
-        addMessage(data.response || "Sorry, cannot process your request.", "bot");
+        // Normal message response
+        addMessage(response, "bot");
       }
     } catch (err) {
       hideTyping();
@@ -241,12 +233,8 @@ What service do you need today?`,
   }
 
   window.GharFixAlwaysWidget = {
-    expand: () => {
-      if (isMinimized) toggleMinimize();
-    },
-    minimize: () => {
-      if (!isMinimized) toggleMinimize();
-    },
+    expand: () => { if (isMinimized) toggleMinimize(); },
+    minimize: () => { if (!isMinimized) toggleMinimize(); },
     toggle: toggleMinimize,
     sendMessage: (text) => {
       if (isMinimized) toggleMinimize();
